@@ -14,6 +14,10 @@ export default function PortfolioSummary({ assets }) {
     if (summary.profit > 0) borderClass = summary.dailyChangePct >= 0 ? 'border-profit-viva-pos' : 'border-profit-dia-neg';
     else if (summary.profit < 0) borderClass = summary.dailyChangePct >= 0 ? 'border-loss-dia-pos' : 'border-loss-viva-neg';
 
+    const annualYieldPct = summary.currentValue > 0
+        ? (summary.annualDividends / summary.currentValue) * 100
+        : 0;
+
     return (
         <section className={`portfolio-summary ${borderClass} mb-4`} aria-label="Resumo consolidado da carteira">
             <div className="portfolio-summary-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -54,17 +58,19 @@ export default function PortfolioSummary({ assets }) {
                 <div className="summary-metric summary-metric-highlight">
                     <span>Patrimônio atual</span>
                     <strong>{formatCurrency(summary.currentValue)}</strong>
+                    <small>Investido: {formatCurrency(summary.investedValue)}</small>
                 </div>
                 <div className="summary-metric">
                     <span>Variação global</span>
                     <strong className={textProfitClass}>{formatCurrency(summary.profit)}</strong>
                     <small className={textProfitClass}>{(summary.profitPct || 0) >= 0 ? '+' : ''}{(summary.profitPct || 0).toFixed(2)}%</small>
                 </div>
-                <div className="summary-metric">
-                    <span>DY esperado anual</span>
+                <div className="summary-metric position-relative">
+                    <span>DY aprox. anual</span>
                     <strong>{formatCurrency(summary.annualDividends)}</strong>
+                    <small>{annualYieldPct.toFixed(2)}% ao ano</small>
                     <details className="dy-info-wrapper">
-                        <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY">
+                        <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY anual">
                             <i className="bi bi-info-circle-fill"></i>
                         </summary>
                         <div className="dy-info-popover text-start">
@@ -72,10 +78,18 @@ export default function PortfolioSummary({ assets }) {
                         </div>
                     </details>
                 </div>
-                <div className="summary-metric">
-                    <span>DY médio mensal</span>
-                    <strong>{(summary.monthlyYieldPct || 0).toFixed(2)}%</strong>
-                    <small>{formatCurrency((summary.annualDividends || 0) / 12)} / mês</small>
+                <div className="summary-metric position-relative">
+                    <span>DY aprox. mensal</span>
+                    <strong>{formatCurrency((summary.annualDividends || 0) / 12)}</strong>
+                    <small>{(summary.monthlyYieldPct || 0).toFixed(2)}% ao mês</small>
+                    <details className="dy-info-wrapper">
+                        <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY mensal">
+                            <i className="bi bi-info-circle-fill"></i>
+                        </summary>
+                        <div className="dy-info-popover text-start">
+                            A renda mensal é uma estimativa calculada pela média dos proventos anuais dividida por 12 meses. Trata-se de projeção indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
+                        </div>
+                    </details>
                 </div>
             </div>
         </section>

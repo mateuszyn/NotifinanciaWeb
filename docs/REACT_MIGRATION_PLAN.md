@@ -131,60 +131,40 @@ Isso é idêntico ao que acontece em produção na Vercel. Logo, **a separação
 
 ---
 
-## 🔲 Sessão 3 — Área de Dividendos & Bola de Neve no AssetCard
+## 🟡 Sessão 3 — Área de Dividendos & Bola de Neve no AssetCard (Em Andamento)
 
 Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados de renda passiva de cada ativo.
 
-### Contexto & Dados Disponíveis
+### Componentes Concluídos nesta Sessão (08/10/2026)
+- [x] `src/components/AssetCard.jsx` — Seção completa de Dividendos & Bola de Neve:
+  - Box de Renda Mensal e Renda Anual (com projeção de cotas compradas: `+ X cota(s)/mês` e `+ Y cota(s)/ano`)
+  - Grid dinâmico dos 12 meses rolantes retroativos com indicador de virada de ano e tooltips customizados
+  - Popover explicativo do DY (`dy-info-wrapper` e `dy-info-popover`)
+  - Mensagem de status e cor da Bola de Neve (`[v] Bola de Neve!` ou `[+] X cotas para a Bola de Neve`)
+  - Tratamento de erro (`dataError` e yield zerado com botão de tentar novamente via `onRetry`)
+- [x] `src/components/PortfolioSummary.jsx` — Refinamento do Painel da Carteira:
+  - Exibição de **Patrimônio Investido** (`currentValue - profit`) como valor secundário abaixo de Patrimônio Atual
+  - **DY aprox. anual**: valor em R$ como principal, porcentagem anual da carteira como secundário (`% ao ano`) e popover explicativo
+  - **DY aprox. mensal**: valor em R$ como principal, porcentagem mensal média como secundário (`% ao mês`) e popover de **não garantia de rendimentos futuros**
+- [x] `AGENTS.md` — Criação do guia universal de arquitetura para agentes de IA (mapa de arquivos, fluxo de dados SWR e regras críticas)
+- [x] **Correção da Bola de Neve**: desacoplado o cálculo de `rendaMensalPorCota` da quantidade de cotas na carteira (`currentPrice * (yieldPct / 100) / 12`), garantindo que o Magic Number permaneça matematicamente constante independente do usuário editar sua quantidade de cotas.
+- [x] **Bloqueio de Ativo Duplicado**: adicionada validação no `AddAssetDrawer.jsx` impedindo o cadastro do mesmo ticker mais de uma vez na carteira.
+- [x] **Recálculo Otimista**: `updateAsset` no `useAssets.js` agora recalcula `divAnual`, `divMensal` e `totalValue` imediatamente ao editar a quantidade.
 
-A API Python já retorna, por ativo:
-- `yieldpct` — Dividend Yield anual (% sobre o preço atual)
-- `paidMonths` — Array com os meses do ano em que houve pagamento (ex: `[1, 2, 3, 4, 5, 6]`)
+### Próximos Passos (Sessão 3.1 & Novas Features de UX)
+- [ ] `src/components/PromptView.jsx` — Gerador de Smart Prompt para IA com snapshot da carteira e link direto de envio para o Google Gemini / ChatGPT
+- [ ] **Barra de Zoom Nativa (Mobile UX)**: controle deslizante ou toggle para ajustar a densidade dos cards em telas móveis, permitindo ver múltiplos ativos em grade compacta (2 colunas) em vez de 1 por 1
+- [ ] **Função de Compartilhamento & Impressão**: exportação da carteira formatada para impressão (PDF limpo) e geração de card/resumo compartilhável
+- [ ] Animação `bell-animating` no sino ao alternar notificações (refinamento visual)
 
-O Supabase já persiste `cached_yield` e `cached_paid_months` na tabela `assets`.
-
-O modelo `Asset.js` já expõe `yieldPct` e `paidMonths` como propriedades calculadas.
-
-### O que será construído
-
-#### 1. Seção de Dividendos no `AssetCard.jsx`
-
-```
-┌─────────────────────────────────┐
-│  DIVIDENDOS                     │
-│  Renda Mensal:  R$ 47,80        │
-│  Renda Anual:   R$ 573,60       │
-│  DY:            8,4% a.a.       │
-│                                 │
-│  Meses pagos (últimos 12):      │
-│  ✅ Jan  ✅ Fev  ✅ Mar  ✅ Abr  │
-│  ✅ Mai  ✅ Jun  ⬜ Jul  ⬜ Ago  │
-│  ⬜ Set  ⬜ Out  ⬜ Nov  ⬜ Dez  │
-└─────────────────────────────────┘
-```
-
-- **Renda Mensal:** `(currentPrice × quantity × yieldPct%) / 12`
-- **Renda Anual:** `currentPrice × quantity × yieldPct%`
-- **Grid de meses:** 12 círculos coloridos, verde se o mês está em `paidMonths`, cinza se não
-- **Tooltip DY:** ao passar o mouse sobre o DY %, um popover explica o que é Dividend Yield
-
-#### 2. Mensagem da Bola de Neve no `AssetCard.jsx`
-
-Abaixo da seção de dividendos, exibir quantas cotas faltam para atingir R$ 1/mês de renda com aquele ativo:
-
-```
-💡 Comprando mais 23 cotas → sua renda deste ativo passa de R$1/mês
-```
-
-Fórmula: `Math.ceil(currentPrice / rendaMensalPorCota)` — já portada no `AddAssetDrawer`, será reutilizada.
-
-#### 3. Componente `PromptView.jsx` (Bônus)
-
-Gerador de prompt para IA (ChatGPT/Gemini) com snapshot da carteira atual, para o usuário pedir uma análise. Era um recurso do Vanilla que precisa ser portado.
-
-### Arquivos a Modificar
-- [ ] `src/components/AssetCard.jsx` — Adicionar seção de Dividendos + Bola de Neve
-- [ ] `src/components/PromptView.jsx` — Criar do zero
+### Arquivos Modificados
+- [x] `src/components/AssetCard.jsx` — Seção de Dividendos + Bola de Neve + 12 meses rolantes
+- [x] `src/components/PortfolioSummary.jsx` — Métricas de DY anual/mensal e patrimônio investido
+- [x] `src/components/AddAssetDrawer.jsx` — Bloqueio de duplicados
+- [x] `src/hooks/useAssets.js` — Recálculo otimista de dividendos
+- [x] `src/pages/Dashboard.jsx` — Passagem de `existingTickers`
+- [x] `AGENTS.md` — Arquivo de contexto e arquitetura para IAs
+- [ ] `src/components/PromptView.jsx` — Criar do zero e plugar no `Dashboard.jsx`
 
 ---
 
@@ -215,4 +195,5 @@ Gerador de prompt para IA (ChatGPT/Gemini) com snapshot da carteira atual, para 
 | Fetch/Cache | SWR manual no hook | Padrão já existia no Vanilla; portado de forma limpa |
 | Formulário de Contato | Formspree (mantido) | Funciona sem back-end adicional |
 | Validação de Ticker | Cache em Set local | Evita double-fetch: "$ Atual" já valida implicitamente; submit só salva |
+| Magic Number Bola de Neve | Independente da quantidade | `Math.ceil(1200 / yieldPct)` reflete o ativo no mercado, não a posse do investidor |
 | Dev local com API | `vercel dev` obrigatório | Único orquestrador que sobe Vite + Python + proxy `/api/*` juntos |

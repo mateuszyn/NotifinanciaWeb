@@ -17,9 +17,47 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     
     const yieldPct = asset.yieldPct || 0;
     const divMensal = asset.divMensal || 0;
+    const divAnual = asset.divAnual || 0;
     const currentPrice = Number(asset.currentPrice) || 0;
     const quantity = Number(asset.quantity) || 0;
-    
+    const paidMonths = asset.paidMonths || asset.paid_months || [];
+
+    // Cálculo da Bola de Neve (Magic Number: quantas cotas pagam 1 nova cota/mês)
+    const rendaMensalPorCota = currentPrice > 0 && yieldPct > 0 ? (currentPrice * (yieldPct / 100)) / 12 : 0;
+    const cotasParaBolaDeNeve = rendaMensalPorCota > 0 && currentPrice > 0 ? Math.ceil(currentPrice / rendaMensalPorCota) : 0;
+    const cotasFaltantes = Math.max(0, cotasParaBolaDeNeve - quantity);
+    const cotasCompradasPorMes = divMensal > 0 && currentPrice > 0 ? Number((divMensal / currentPrice).toFixed(2)) : 0;
+    const cotasCompradasPorAno = divAnual > 0 && currentPrice > 0 ? Number((divAnual / currentPrice).toFixed(1)) : 0;
+    const isSnowballAchieved = cotasParaBolaDeNeve > 0 && quantity >= cotasParaBolaDeNeve;
+    const snowballMessage = isSnowballAchieved 
+        ? `[v] Bola de Neve! (${cotasParaBolaDeNeve} Cotas)` 
+        : `[+] ${cotasFaltantes} cotas para a Bola de Neve (${cotasParaBolaDeNeve} cotas)`;
+    const snowballColor = isSnowballAchieved ? '#8fe3a7' : '#ff8a8a';
+
+    // Construção dos 12 meses rolantes
+    const monthNamesFull = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const monthNamesShort = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const rollingMonths = [];
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonth - i, 1);
+        const mIdx = d.getMonth() + 1;
+        const yr = d.getFullYear();
+        rollingMonths.push({
+            monthIndex: mIdx,
+            year: yr,
+            short: monthNamesShort[mIdx - 1],
+            full: monthNamesFull[mIdx - 1]
+        });
+    }
+
     return (
         <div className="col-12 col-md-6 col-lg-4 mb-4">
             <div className={`asset-card ${borderClass}`}>
@@ -45,6 +83,11 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                     <div className="col-12">
                         <p className="price-value mb-0">Total: R$ {(quantity * currentPrice).toFixed(2)}</p>
                         <p className="small text-secondary fw-bold mb-1">QTD: {quantity}</p>
+                        {cotasParaBolaDeNeve > 0 && (
+                            <p className="small mb-0" style={{ fontSize: '0.72rem', color: snowballColor }}>
+                                {snowballMessage}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -56,6 +99,105 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                     <div className="col-6 ps-3">
                         <p className="price-label">Preço Atual</p>
                         <p className="price-value d-flex align-items-center gap-1">R$ {currentPrice.toFixed(2)} <span className={`${dailyTextClass} small`}>({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)</span></p>
+                    </div>
+                </div>
+
+                {/* Box de Dividendos */}
+                <div className="bg-dark rounded p-2 text-center border border-secondary mb-3 mx-0 dividend-box-container position-relative">
+                    {yieldPct > 0 && (
+                        <details className="dy-info-wrapper">
+                            <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY">
+                                <i className="bi bi-info-circle-fill"></i>
+                            </summary>
+                            <div className="dy-info-popover text-start">
+                                O Dividend Yield (DY) é baseado nos proventos pagos nos últimos 12 meses, obtidos via Yahoo Finance. Trata-se de uma base estimada e indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
+                            </div>
+                        </details>
+                    )}
+
+                    <div className="mb-2">
+                        <span className={`badge ${yieldPct > 0 ? 'bg-success' : 'bg-warning'} m-0`}>
+                            {yieldPct > 0 ? `Yield Anual: ${yieldPct.toFixed(2)}%` : 'Sem dados de Dividendos'}
+                        </span>
+                    </div>
+
+                    {asset.dataError ? (
+                        <div className="text-center p-2">
+                            <p className="small text-warning mb-2">Não foi possível carregar os dados.</p>
+                            <button className="btn btn-sm btn-outline-warning" onClick={() => onRetry && onRetry(ticker)}>
+                                <i className="bi bi-arrow-clockwise me-1"></i> Tentar novamente
+                            </button>
+                        </div>
+                    ) : yieldPct === 0 ? (
+                        <div className="text-center p-2">
+                            <p className="small text-warning mb-2">Não foi possível calcular dividendos.</p>
+                            <button className="btn btn-sm btn-outline-warning" onClick={() => onRetry && onRetry(ticker)}>
+                                <i className="bi bi-arrow-clockwise me-1"></i> Atualizar
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="d-flex justify-content-around">
+                            <div>
+                                <p className="small text-secondary mb-0">Renda Mensal</p>
+                                <p className="fw-bold mb-0 text-white">R$ {divMensal.toFixed(2)}</p>
+                                <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
+                                    + {cotasCompradasPorMes.toFixed(2)} cota(s) / mês
+                                </p>
+                            </div>
+                            <div>
+                                <p className="small text-secondary mb-0">Renda Anual</p>
+                                <p className="fw-bold mb-0 text-white">R$ {divAnual.toFixed(2)}</p>
+                                <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
+                                    + {cotasCompradasPorAno.toFixed(2)} cota(s) / ano
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Grid dos 12 meses rolantes */}
+                    <div className="d-flex justify-content-between align-items-center gap-1 mt-2 px-1 py-1 bg-black rounded border border-secondary months-grid-container">
+                        {rollingMonths.map((item, idx) => {
+                            const hasPaid = paidMonths.includes(item.monthIndex);
+                            const boxBg = hasPaid ? '#28a745' : '#212529';
+                            const textColor = hasPaid ? '#ffffff' : '#495057';
+                            const tooltipText = hasPaid 
+                                ? `${item.full}/${item.year}: Pago nos últimos 12 meses` 
+                                : `${item.full}/${item.year}: Sem provento nos últimos 12m`;
+                            const isYearTurn = idx < rollingMonths.length - 1 && item.year !== rollingMonths[idx + 1].year;
+
+                            return (
+                                <React.Fragment key={`${item.monthIndex}-${item.year}`}>
+                                    <div 
+                                        tabIndex={0} 
+                                        className="month-box" 
+                                        style={{ 
+                                            width: '20px', 
+                                            height: '20px', 
+                                            backgroundColor: boxBg, 
+                                            color: textColor, 
+                                            fontSize: '0.65rem', 
+                                            fontWeight: 'bold', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            borderRadius: '3px', 
+                                            cursor: 'pointer', 
+                                            position: 'relative' 
+                                        }}
+                                    >
+                                        {item.short}
+                                        <span className="month-tooltip">{tooltipText}</span>
+                                    </div>
+                                    {isYearTurn && (
+                                        <div 
+                                            className="month-year-divider" 
+                                            style={{ width: '1px', height: '16px', backgroundColor: '#6c757d', margin: '0 2px' }} 
+                                            title="Virada de Ano"
+                                        />
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
                 </div>
 

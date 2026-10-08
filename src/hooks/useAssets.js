@@ -143,9 +143,10 @@ export function useAssets() {
             if (a.id == id) {
                 a.quantity = data.quantity;
                 a.averagePrice = data.averagePrice;
-                // Re-calcula propriedades enriquecidas (baseado no preço atual) usando o método enrich dele próprio
-                // Hack rápido para forçar o recálculo do PM:
-                a.variacaoPm = ((a.currentPrice - a.averagePrice) / a.averagePrice) * 100;
+                a.variacaoPm = a.averagePrice > 0 ? ((a.currentPrice - a.averagePrice) / a.averagePrice) * 100 : 0;
+                a.totalValue = a.currentPrice * a.quantity;
+                a.divAnual = a.currentPrice * (a.yieldPct / 100) * a.quantity;
+                a.divMensal = a.divAnual / 12;
             }
             return a;
         }));

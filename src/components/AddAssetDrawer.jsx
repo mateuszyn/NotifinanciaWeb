@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TickerDictionary } from '../utils/ticker-dictionary.js';
 import { AssetService } from '../services/asset-service.js';
 
-export default function AddAssetDrawer({ onAddAsset }) {
+export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
     const [isOpen, setIsOpen] = useState(false);
     const [ticker, setTicker] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -89,6 +89,16 @@ export default function AddAssetDrawer({ onAddAsset }) {
 
         if (!cleanTicker || !qtyValue || !priceValue) {
             window.Swal.fire({ icon: 'error', title: 'Erro', text: 'Preencha o Ticker, a Quantidade e o Preço Médio.' });
+            return;
+        }
+
+        // Validação contra ativos duplicados na carteira
+        if (existingTickers && existingTickers.some(t => t.toUpperCase() === cleanTicker)) {
+            window.Swal.fire({ 
+                icon: 'warning', 
+                title: 'Ativo já cadastrado', 
+                text: `O ativo ${cleanTicker} já está cadastrado na sua carteira. Edite a quantidade existente em vez de adicionar outro.` 
+            });
             return;
         }
 

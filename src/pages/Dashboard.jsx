@@ -173,7 +173,10 @@ export default function Dashboard() {
             />
             
             {isAuthenticated && (
-                <AddAssetDrawer onAddAsset={addAsset} />
+                <AddAssetDrawer 
+                    onAddAsset={addAsset} 
+                    existingTickers={assets.map(a => a.ticker)} 
+                />
             )}
         </>
     );
