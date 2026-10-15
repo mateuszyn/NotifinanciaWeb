@@ -131,7 +131,7 @@ Isso é idêntico ao que acontece em produção na Vercel. Logo, **a separação
 
 ---
 
-## 🟡 Sessão 3 — Área de Dividendos & Bola de Neve no AssetCard (Em Andamento)
+## ✅ Sessão 3 — Dividendos, Bola de Neve & UX do Dashboard (Concluída em 15/10/2026)
 
 Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados de renda passiva de cada ativo.
 
@@ -150,11 +150,18 @@ Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados
 - [x] **Correção da Bola de Neve**: desacoplado o cálculo de `rendaMensalPorCota` da quantidade de cotas na carteira (`currentPrice * (yieldPct / 100) / 12`), garantindo que o Magic Number permaneça matematicamente constante independente do usuário editar sua quantidade de cotas.
 - [x] **Bloqueio de Ativo Duplicado**: adicionada validação no `AddAssetDrawer.jsx` impedindo o cadastro do mesmo ticker mais de uma vez na carteira.
 - [x] **Recálculo Otimista**: `updateAsset` no `useAssets.js` agora recalcula `divAnual`, `divMensal` e `totalValue` imediatamente ao editar a quantidade.
+- [x] **Ticker descoberto**: após cadastrar um ticker validado ausente de `TickerDictionary.list`, o React registra o ticker na tabela `tickers_descobertos`, como fazia o controller vanilla.
 
 ### Próximos Passos (Sessão 3.1 & Novas Features de UX)
-- [ ] `src/components/PromptView.jsx` — Gerador de Smart Prompt para IA com snapshot da carteira e link direto de envio para o Google Gemini / ChatGPT
-- [ ] **Barra de Zoom Nativa (Mobile UX)**: controle deslizante ou toggle para ajustar a densidade dos cards em telas móveis, permitindo ver múltiplos ativos em grade compacta (2 colunas) em vez de 1 por 1
-- [ ] **Função de Compartilhamento & Impressão**: exportação da carteira formatada para impressão (PDF limpo) e geração de card/resumo compartilhável
+- [x] `src/components/PromptView.jsx` — Gerador de Smart Prompt compacto com resumo da carteira, DY e status da Bola de Neve; pede análise mensal por ativo e recomendação fundamentada de compra com critérios de qualidade, valuation, risco, carteira e renda de FIIs
+- [x] **Controles de visualização da carteira**: controle deslizante de densidade para exibir de 1 a 3 cards por linha no desktop e até 2 no celular
+- [x] **Impressão**: botão na área de controles; a folha de impressão sempre usa três cards por linha, independente da densidade da tela
+- [x] **Detalhes de dividendos recolhíveis**: mantém o DY anual visível, sincroniza abertura de todos os cards e preserva o estado aberto ao interagir com outras áreas da aba
+- [x] **Cabeçalho dos dividendos**: ícone de informação à esquerda, Yield centralizado e ícone de expansão à direita; posições não mudam ao abrir
+- [x] **Rendas projetadas**: Renda Mensal e Renda Anual separadas por divisor vertical; quantidade projetada exibida como `+ X cotas`, sem sufixos de período
+- [x] **Atalho para IA**: botão `IA` com estrela e seta nos controles rola até o prompt; o botão `Pergunte ao Gemini` fica abaixo do prompt
+- [x] **Ajustes responsivos dos cards**: ticker e ações de editar/excluir dimensionados conforme a largura individual do card; preço atual empilha preço e variação como o P. Médio
+- [ ] **Compartilhamento**: geração de card/resumo da carteira para redes sociais
 - [ ] Animação `bell-animating` no sino ao alternar notificações (refinamento visual)
 
 ### Arquivos Modificados
@@ -163,23 +170,34 @@ Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados
 - [x] `src/components/AddAssetDrawer.jsx` — Bloqueio de duplicados
 - [x] `src/hooks/useAssets.js` — Recálculo otimista de dividendos
 - [x] `src/pages/Dashboard.jsx` — Passagem de `existingTickers`
+- [x] `src/App.jsx` — Preserva os dropdowns de DY abertos ao interagir com outras áreas
 - [x] `AGENTS.md` — Arquivo de contexto e arquitetura para IAs
-- [ ] `src/components/PromptView.jsx` — Criar do zero e plugar no `Dashboard.jsx`
+- [x] `src/components/PromptView.jsx` — Portado de `src/views/prompt-view.js`, integrado ao `Dashboard.jsx` e enriquecido com dados da carteira; disponível apenas para usuários autenticados
+- [x] `src/styles/cards.css` e `src/styles/style.css` — Densidade responsiva, impressão, dropdowns de DY e escala de ações por card
 
 ---
 
 ## 🔲 Sessão 4 — Limpeza Final & Merge
 
-### Remoção de Arquivos Legados
-- [ ] `src/main.js` — Substituído por `src/main.jsx`
-- [ ] `src/controllers/asset-controller.js` — Substituído por `src/hooks/useAssets.js`
-- [ ] `src/views/` (pasta inteira) — Substituída por `src/components/` e `src/pages/`
-- [ ] Remover `src/models/` se não houver mais dependências diretas
+### Sequência de remoção responsável do legado
+
+Não apagar diretórios inteiros por suposição. Fazer uma etapa por vez, confirmar referências e manter cada mudança pequena e reversível:
+
+1. **Confirmar o entry point efetivamente servido**: o `index.html` da raiz carrega `/src/main.jsx`, mas `public/index.html` ainda referencia `/src/main.js`. Verificar o conteúdo gerado em `dist/`, as regras de deploy/hosting e qual HTML é servido; resolver a duplicidade antes de remover o entry antigo. Não presumir que `public/index.html` é inofensivo: arquivos de `public/` podem ser copiados pelo Vite.
+2. **Auditar referências de produção e ferramentas**: buscar imports, referências dinâmicas, scripts, configurações, documentação operacional e automações para cada arquivo Vanilla; diferenciar referências no próprio legado/docs das referências no app React, build e deploy.
+3. **Remover em lotes coerentes**: somente depois da auditoria e do entry confirmado, excluir `src/main.js`, `src/controllers/asset-controller.js` e os módulos de `src/views/` que não tenham consumidores ativos. Rever um por um, evitando apagar código ainda necessário ou ignorar dependências indiretas.
+4. **Preservar modelos compartilhados**: `src/services/asset-service.js` importa `src/models/asset.js`, portanto esse modelo **não pode ser removido** no estado atual. `src/models/profile.js` só é consumido pelo controller Vanilla no levantamento atual; revalidar busca de referências após a remoção e então decidir se pode ser apagado.
+5. **Verificar arquivos e recursos não-JS**: revisar `public/`, assets, `index.html`, scripts e arquivos de configuração para distinguir material legado de recursos ainda usados pelo React ou pela hospedagem.
+6. **Validar cada lote antes de avançar**: executar `npm run build`; revisar `dist/`; conferir rotas React e as rotas `/api/*`; depois fazer smoke test do Preview Vercel incluindo login, carregamento de ativos, CRUD, notificações e links de páginas. Confirmar rollback/branch de produção antes do merge.
+7. **Fechar a migração**: só então marcar o legado como removido, atualizar status do README/plano e preparar merge para `main`.
+
+Estado observado em 15/10/2026: o entry principal raiz aponta para React; `public/index.html` ainda aponta para Vanilla; `src/main.js` importa o controller e views; o controller importa `models/profile.js`; e `asset-service.js` importa `models/asset.js`. Nenhum arquivo legado foi removido nesta atualização documental.
 
 ### Deploy & Validação Final
 - [ ] Testar Preview Deploy na Vercel (URL temporária da branch)
 - [ ] Validar Auth Google em produção (OAuth redirect)
 - [ ] Validar CRUD completo no ambiente de Preview (requer `vercel dev` localmente)
+- [ ] Confirmar rotas React diretas e refresh em `/termos`, `/privacidade` e `/contato`
 - [ ] Merge da `feature/react-migration` → `main`
 - [ ] Deploy em produção sem downtime
 

@@ -12,6 +12,181 @@
     gap: 20px;
 }
 
+.portfolio-view-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(17, 24, 45, 0.75);
+}
+
+.portfolio-view-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.asset-zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #cbd5e1;
+    font-size: 0.85rem;
+}
+
+.asset-zoom-label {
+    white-space: nowrap;
+}
+
+.asset-zoom-slider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8591af;
+}
+
+.asset-zoom-slider input {
+    width: clamp(100px, 18vw, 190px);
+    accent-color: #28a745;
+    cursor: pointer;
+}
+
+.asset-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--asset-columns, 3), minmax(0, 1fr));
+    gap: 20px;
+}
+
+.asset-card-wrapper {
+    min-width: 0;
+    container-type: inline-size;
+}
+
+.asset-card-wrapper > .asset-card {
+    height: 100%;
+}
+
+.asset-card-header {
+    font-size: clamp(0.85rem, 5cqi, 1.5rem);
+}
+
+.asset-card-header h4 {
+    font-size: inherit;
+}
+
+.asset-card-actions {
+    font-size: inherit;
+}
+
+.asset-card-actions .btn {
+    font-size: inherit;
+}
+
+.asset-card-dy-info {
+    position: relative;
+    justify-self: start;
+    align-self: center;
+    line-height: 1;
+}
+
+.asset-card-dy-info .dy-info-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: 0;
+    background: transparent;
+    color: #b0bec5;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.asset-card-dy-info .dy-info-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: auto;
+    width: min(240px, calc(100vw - 40px));
+    background-color: var(--modal-bg, #212529);
+    border: 1px solid #555;
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    z-index: 1300;
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+}
+
+.asset-dividends-details > summary {
+    display: grid;
+    grid-template-columns: minmax(24px, 1fr) auto minmax(24px, 1fr);
+    align-items: center;
+    gap: 4px;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+}
+
+.asset-dividends-details > summary > .badge {
+    justify-self: center;
+}
+
+.asset-dividends-details > summary > .bi-chevron-down {
+    justify-self: end;
+}
+
+.asset-dividends-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.asset-dividends-details > summary .bi-chevron-down {
+    transition: transform 0.2s ease;
+}
+
+.asset-dividends-details[open] > summary .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+.asset-dividends-content {
+    padding-top: 12px;
+}
+
+
+
+@media (max-width: 767px) {
+    .asset-cards-grid {
+        grid-template-columns: repeat(var(--asset-columns, 1), minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .portfolio-view-controls {
+        align-items: stretch;
+    }
+}
+
+@media (max-width: 480px) {
+    .portfolio-view-controls {
+        flex-direction: column;
+    }
+
+    .portfolio-view-actions {
+        width: 100%;
+    }
+
+    .portfolio-view-actions > button {
+        flex: 1;
+    }
+
+    .asset-zoom-control {
+        justify-content: space-between;
+    }
+}
 
 /* =========================================
    2. CARDS DE ATIVOS
@@ -327,11 +502,17 @@
 /* Container do grid de meses */
 .months-grid-container {
     position: relative;
+    gap: 2px;
+    justify-content: flex-start !important;
+    box-sizing: border-box;
 }
 
 /* Estilo base de cada mês no grid */
 .month-box {
-    width: 22px;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    box-sizing: border-box;
     height: 22px;
     font-size: 0.65rem;
     font-weight: bold;
@@ -345,8 +526,85 @@
     transition: transform 0.15s ease;
 }
 
+.month-year-divider {
+    flex: 0 0 1px;
+}
+
 .month-box:active {
     transform: scale(1.2);
+}
+
+@media print {
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #111 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    header,
+    footer,
+    .portfolio-view-controls,
+    .bottom-drawer,
+    .prompt-view,
+    .asset-card-actions,
+    .asset-broker-link,
+    .modal-overlay,
+    .dy-info-wrapper,
+    .month-tooltip {
+        display: none !important;
+    }
+
+    .container {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .portfolio-summary,
+    .asset-card {
+        color: #111 !important;
+        background: #fff !important;
+        border: 1px solid #999 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+
+    .asset-card *,
+    .portfolio-summary * {
+        color: #111 !important;
+    }
+
+    .asset-card .bg-dark,
+    .asset-card .bg-black,
+    .portfolio-summary .ticker-popover {
+        background: #fff !important;
+    }
+
+    .asset-cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 10px;
+    }
+
+    .asset-card {
+        padding: 12px !important;
+    }
+
+    .asset-dividends-details > summary {
+        display: none;
+    }
+
+    .asset-dividends-content {
+        display: block !important;
+    }
+
+    .asset-card .text-secondary,
+    .asset-card .price-label {
+        color: #444 !important;
+    }
 }
 
 /* Tooltip customizado otimizado para fechar ao toque/perda de foco */

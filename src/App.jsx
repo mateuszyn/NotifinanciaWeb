@@ -19,6 +19,7 @@ export default function App() {
   React.useEffect(() => {
     const closeDetailsOnClickOutside = (e) => {
       document.querySelectorAll('details[open]').forEach((details) => {
+        if (details.classList.contains('asset-dividends-details')) return;
         if (!details.contains(e.target)) {
           details.removeAttribute('open');
         }

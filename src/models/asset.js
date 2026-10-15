@@ -56,7 +56,6 @@ export class Asset {
         if (Array.isArray(monthsRaw)) {
             this.paidMonths = monthsRaw;
         }
-
         if (fetchedPrice > 0) {
             // SUCESSO: Atualiza com os dados super frescos do mercado
             this.currentPrice = fetchedPrice;

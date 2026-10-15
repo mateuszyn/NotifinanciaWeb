@@ -118,7 +118,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                 window.Swal.update({ title: 'Salvando na carteira...' });
             }
 
-            await onAddAsset({ ticker: cleanTicker, quantity: qtyValue, averagePrice: priceValue });
+            const result = await onAddAsset({ ticker: cleanTicker, quantity: qtyValue, averagePrice: priceValue });
 
             // Limpa form e fecha gaveta
             setTicker('');
@@ -127,7 +127,15 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
             setSnowballInfo(null);
             setIsOpen(false);
             
-            window.Swal.fire({ icon: 'success', title: 'Sucesso!', text: `${cleanTicker} adicionado com sucesso!`, timer: 2000, showConfirmButton: false });
+            window.Swal.fire({
+                icon: result?.tickerDiscoveryFailed ? 'warning' : 'success',
+                title: result?.tickerDiscoveryFailed ? 'Ativo salvo' : 'Sucesso!',
+                text: result?.tickerDiscoveryFailed
+                    ? `O ativo foi adicionado à carteira, mas não foi possível registrar ${cleanTicker} como ticker descoberto.`
+                    : `${cleanTicker} adicionado com sucesso!`,
+                timer: result?.tickerDiscoveryFailed ? undefined : 2000,
+                showConfirmButton: result?.tickerDiscoveryFailed
+            });
         } catch (error) {
             window.Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao processar sua solicitação.' });
         } finally {

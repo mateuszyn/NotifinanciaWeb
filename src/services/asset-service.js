@@ -1,5 +1,6 @@
 import { supabase } from '../infrastructure/supabase-client.js';
 import { Asset } from '../models/asset.js';
+import { TickerDictionary } from '../utils/ticker-dictionary.js';
 
 export const AssetService = {
     // --- BLINDAGEM JWT ---
@@ -25,7 +26,10 @@ export const AssetService = {
             asset.id = item.id;
             
             // CACHE INSTANTÂNEO: Aplica preço, variação, DY, P/VP e os meses pagos salvos
-            asset.applyCache(item.cached_price, item.cached_change, item.cached_yield, null, item.cached_paid_months);
+            const cachedPaidMonths = Array.isArray(item.cached_paid_months)
+                ? item.cached_paid_months
+                : item.cached_paid_months?.months || [];
+            asset.applyCache(item.cached_price, item.cached_change, item.cached_yield, null, cachedPaidMonths);
             
             return asset;
         });
@@ -179,6 +183,17 @@ export const AssetService = {
                 average_price: asset.averagePrice
             }]);
         if (error) throw error;
+    },
+
+    async addDiscoveredTicker(ticker) {
+        const normalizedTicker = ticker.toUpperCase().replace(/\.SA$/i, '');
+        if (TickerDictionary.list.includes(normalizedTicker)) return;
+
+        const { error } = await supabase
+            .from('tickers_descobertos')
+            .insert([{ ticker: normalizedTicker }]);
+
+        if (error && error.code !== '23505') throw error;
     },
 
     async deleteAsset(id) {

@@ -128,11 +128,19 @@ export function useAssets() {
     const addAsset = async (assetData) => {
         if (!isAuthenticated) return;
         await AssetService.addAsset(assetData);
+        let tickerDiscoveryFailed = false;
+        try {
+            await AssetService.addDiscoveredTicker(assetData.ticker);
+        } catch (err) {
+            console.error('Ativo salvo, mas não foi possível registrar o ticker descoberto.', err);
+            tickerDiscoveryFailed = true;
+        }
         // Após adicionar no banco, refazemos o fetch completo
         const updatedAssets = await AssetService.getAssets();
         setRawAssets(updatedAssets || []);
         // E engatilhamos o SWR local para esse ativo para não ficar com preço zerado na tela
         refreshSingleAsset(assetData.ticker);
+        return { tickerDiscoveryFailed };
     };
 
     const updateAsset = async (id, data) => {

@@ -21,7 +21,7 @@ Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
 |---|---|---|
 | **Ponto de entrada React** | `src/main.jsx` & `src/App.jsx` | Roteamento (`react-router-dom`), AuthProvider e click listener global |
 | **Página Principal** | `src/pages/Dashboard.jsx` | Orquestra Header, Resumo da Carteira, Grid de Cards, Modais e Drawer |
-| **Card de Ativo Individual** | `src/components/AssetCard.jsx` | Exibe PM, Preço Atual, Variação, **Dividendos**, **Grid 12 meses rolantes** e **Bola de Neve** |
+| **Card de Ativo Individual** | `src/components/AssetCard.jsx` | Exibe PM, Preço Atual, Variação, DY anual e detalhes recolhíveis de **Dividendos**, **Grid 12 meses rolantes** e **Bola de Neve** |
 | **Painel de Resumo** | `src/components/PortfolioSummary.jsx` | Total investido, variação global, DY médio, grid de tickers com popovers |
 | **Adicionar Ativo (Drawer)** | `src/components/AddAssetDrawer.jsx` | Drawer deslizante, autocomplete de tickers B3, botão "$ Atual" e validação |
 | **Editar Ativo (Modal)** | `src/components/UpdateAssetModal.jsx` | Modal de ajuste de quantidade e PM com botões rápidos (+10, +100, etc.) |
@@ -32,7 +32,7 @@ Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
 | **API Python (Back-end)** | `api/index.py` & `api/services/marketService.py` | FastAPI scraping Yahoo Finance: cotação, DY anual e array `paidMonths` |
 | **Dicionário de Tickers B3** | `src/utils/ticker-dictionary.js` | Lista estática de ações e FIIs da B3 para sugestões instantâneas no front |
 | **Configuração de Corretoras** | `src/utils/brokers.js` | Cores, links diretos para Play Store/Web e identidade visual de cada broker |
-| **Estilos Globais e Cards** | `src/styles/cards.css` & `src/styles/style.css` | Cores dinâmicas de rentabilidade, `.month-box`, `.dy-info-popover`, `.asset-card` |
+| **Estilos Globais e Cards** | `src/styles/cards.css` & `src/styles/style.css` | Cores dinâmicas de rentabilidade, grade responsiva, impressão em densidade máxima (3 cards por linha), tamanhos responsivos dos controles, `.month-box` e `.asset-card` |
 
 ---
 
@@ -70,10 +70,11 @@ useAssets() hook é montado
    - No ambiente Windows do usuário, a rede exige a flag `--strict-ssl=false` em comandos `npm install` caso haja bloqueio de certificado.
 4. **Modo Visitante (Guest Mode)**:
    - Quando `!isAuthenticated`, `useAssets` injeta ativos simulados (`MXRF11`, `PETR4`, `KLBN4`). O app deve continuar navegável e responsivo sem quebrar para visitantes.
-5. **Legado em Migração (Strangler Fig Pattern)**:
-   - A pasta `src/controllers/` e `src/views/` pertence ao antigo MVC Vanilla.
-   - As novas implementações vivem estritamente em `src/components/`, `src/pages/` e `src/hooks/`.
-   - Não crie novas dependências com as views antigas.
+5. **Legado Vanilla pendente de remoção responsável**:
+   - A aplicação React usa o `index.html` da raiz e `src/main.jsx`. `public/index.html` ainda aponta para `src/main.js`; antes de apagar esse arquivo ou o entry antigo, determine se o arquivo público é copiado/servido no build e resolva a duplicidade.
+   - `src/controllers/` e `src/views/` são a cadeia MVC antiga. Não crie novas dependências com ela; remova-a somente após confirmar referências, entry points e build/deploy.
+   - Não remova `src/models/` em bloco: `src/services/asset-service.js` ainda depende de `src/models/asset.js`. Avalie `src/models/profile.js` separadamente depois de eliminar o controller Vanilla.
+   - Consulte a sequência de auditoria em `docs/REACT_MIGRATION_PLAN.md`; preserve arquivos compartilhados, API Python, funções Supabase e configuração de produção.
 
 ---
 
@@ -85,7 +86,9 @@ useAssets() hook é montado
 
 ---
 
-## 6. Backlog de Features (Próximas Tarefas)
-1. **Gerador de Smart Prompt & Link Gemini (`PromptView.jsx`)**: Portar o gerador de análise por IA com snapshot instantâneo da carteira e link direto de envio para o Google Gemini e ChatGPT.
-2. **Barra de Zoom Nativa (Mobile UX)**: Controle deslizante/toggle na interface móvel para compactar o layout de cards em grade de 2 colunas, permitindo ao usuário ver múltiplos ativos sem scroll excessivo.
-3. **Modo de Impressão e Compartilhamento**: Estilos `@media print` e gerador de cartão/PDF limpo da carteira para envio em redes sociais ou arquivamento pessoal.
+## 6. Estado Atual & Próximas Tarefas
+- **Prompt de IA (`PromptView.jsx`)**: portado e enriquecido com snapshot compacto da carteira, análise mensal baseada em notícias e fatores macro/micro, recomendação fundamentada de aporte e acesso ao Gemini. O botão `IA` nos controles rola até o prompt; `Pergunte ao Gemini` fica abaixo do prompt.
+- **Visualização da carteira**: controles de impressão e densidade implementados; impressão força três cards por linha. No celular, a grade permite até duas colunas.
+- **Dividendos nos cards**: Yield anual sempre visível; detalhes recolhíveis sincronizam a abertura entre os ativos e permanecem abertos ao clicar no conteúdo. Cabeçalho mantém informação à esquerda, Yield central e seta à direita. Rendas mensal/anual são separadas por borda; projeções mostram somente `+ X cotas`.
+- **Próxima prioridade**: concluir a auditoria e remoção responsável do legado descrita em `docs/REACT_MIGRATION_PLAN.md`.
+- **Backlog posterior**: compartilhamento visual da carteira; refinamento da animação de notificações.

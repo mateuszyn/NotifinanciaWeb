@@ -3,12 +3,17 @@ import { useAuth } from '../context/AuthContext';
 import { useAssets } from '../hooks/useAssets';
 import AssetCard from '../components/AssetCard';
 import PortfolioSummary from '../components/PortfolioSummary';
+import PromptView from '../components/PromptView';
 import Header from '../components/Header';
 import UpdateAssetModal from '../components/UpdateAssetModal';
 import AddAssetDrawer from '../components/AddAssetDrawer';
 
 export default function Dashboard() {
     const { isAuthenticated } = useAuth();
+    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+    const [assetColumns, setAssetColumns] = useState(() => (
+        window.matchMedia('(max-width: 767px)').matches ? 1 : 3
+    ));
     const {
         assets,
         loading,
@@ -26,6 +31,16 @@ export default function Dashboard() {
     } = useAssets();
 
     const [editingAsset, setEditingAsset] = useState(null);
+
+    React.useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const handleViewportChange = event => {
+            setIsMobile(event.matches);
+            setAssetColumns(current => Math.min(current, event.matches ? 2 : 3));
+        };
+        mediaQuery.addEventListener('change', handleViewportChange);
+        return () => mediaQuery.removeEventListener('change', handleViewportChange);
+    }, []);
 
     const handleSaveEdit = async (id, data) => {
         try {
@@ -151,7 +166,55 @@ export default function Dashboard() {
 
                 {!loading && <PortfolioSummary assets={assets} />}
 
-                <div className="row mt-3">
+                {!loading && (
+                    <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
+                        <div className="portfolio-view-actions">
+                            <button type="button" className="btn btn-outline-light" onClick={() => window.print()}>
+                                <i className="bi bi-printer me-2" aria-hidden="true"></i>
+                                Imprimir carteira
+                            </button>
+                            {isAuthenticated && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-info"
+                                    onClick={() => document.getElementById('portfolio-prompt')?.scrollIntoView({ behavior: 'smooth' })}
+                                >
+                                    <i className="bi bi-stars me-2" aria-hidden="true"></i>
+                                    IA
+                                    <i className="bi bi-chevron-down ms-2" aria-hidden="true"></i>
+                                </button>
+                            )}
+                        </div>
+                        <label className="asset-zoom-control" htmlFor="asset-columns">
+                            <span className="asset-zoom-label">
+                                <i className="bi bi-zoom-out me-2" aria-hidden="true"></i>
+                                Densidade dos cards
+                            </span>
+                            <span className="asset-zoom-slider">
+                                <span aria-hidden="true">−</span>
+                                <input
+                                    id="asset-columns"
+                                    type="range"
+                                    min="1"
+                                    max={isMobile ? 2 : 3}
+                                    step="1"
+                                    value={assetColumns}
+                                    onChange={event => setAssetColumns(Number(event.target.value))}
+                                    aria-valuetext={`${assetColumns} ${assetColumns === 1 ? 'card' : 'cards'} por linha`}
+                                />
+                                <span aria-hidden="true">+</span>
+                            </span>
+                            <span className="visually-hidden" aria-live="polite">
+                                {assetColumns} {assetColumns === 1 ? 'card' : 'cards'} por linha
+                            </span>
+                        </label>
+                    </div>
+                )}
+
+                <div
+                    className="asset-cards-grid mt-3"
+                    style={{ '--asset-columns': assetColumns }}
+                >
                     {!loading && assets.map(asset => (
                         <AssetCard
                             key={asset.id || asset.ticker}
@@ -164,6 +227,8 @@ export default function Dashboard() {
                         />
                     ))}
                 </div>
+
+                {!loading && <PromptView assets={assets} isGuest={!isAuthenticated} />}
             </div>
 
             <UpdateAssetModal 
