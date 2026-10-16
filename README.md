@@ -4,7 +4,7 @@
 
 O **Notifinancia** é uma plataforma web completa desenvolvida para o acompanhamento estratégico de ações e Fundos Imobiliários (FIIs) da B3. Inspirado na metodologia Barsi de investimento focado em dividendos, o sistema oferece cotações em tempo real, cálculos automáticos de preço médio, alertas de variação e relatórios diários automatizados direto no e-mail do usuário.
 
-> 🚧 **Em migração arquitetural:** A branch `feature/react-migration` contém a reescrita do front-end em **React + Vite** e melhorias recentes de UX. A auditoria e remoção segura dos arquivos MVC Vanilla ainda está pendente antes de concluir a migração. Veja [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
+> 🚀 **Front-end 100% migrado para React 19 + Vite!** A base legado Vanilla MVC foi totalmente descontinuada e removida. O sistema agora conta com arquitetura modular baseada em Componentes, Context API e Custom Hooks, com renderização fluida, Container Queries e integração direta com o Google Gemini. Veja [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
 
 ---
 
@@ -12,37 +12,41 @@ O **Notifinancia** é uma plataforma web completa desenvolvida para o acompanham
 
 Este projeto foi construído com foco em **performance, resiliência e UX**, resolvendo desafios reais de engenharia de software:
 
-*   **Migração Arquitetural Planejada (React):** O projeto está sendo portado de uma arquitetura MVC Vanilla JS para React, adotando Custom Hooks, Context API e componentização orientada a mercado. A estratégia de migração incremental (*Strangler Fig*) garante que a versão de produção nunca ficou fora do ar durante o processo.
-*   **Arquitetura Serverless Híbrida:** Integração fluida entre um Front-end e um Back-end robusto em Python utilizando as *Serverless Functions* da Vercel. Isso eliminou problemas de CORS e reduziu o tempo de resposta das APIs para milissegundos.
-*   **Resiliência no Web Scraping:** Implementação de mecanismos de *fallback* e cálculos matemáticos "na raça" no Back-end (Python/yfinance) para contornar bloqueios de IP ao buscar o *Dividend Yield* em ambientes de nuvem.
-*   **Integração com IA (Prompt Engineering):** O sistema não apenas exibe dados, mas conta com um motor gerador de *Smart Prompts*. Ele compila os dados da carteira do usuário (ativos, preço médio, variação diária, quantidade) e gera um prompt otimizado para o Google Gemini retornar análises táticas de aporte e leitura de cenário.
+*   **Migração Arquitetural Completa (React 19):** Portado de um monólito MVC Vanilla JS para um SPA moderno em React 19 com Vite, aplicando Custom Hooks (`useAssets`), Context API para autenticação e isolamento de estado. A transição foi executada utilizando o padrão *Strangler Fig*, mantendo o sistema em produção e eliminando 18 arquivos legados ao final.
+*   **Arquitetura Serverless Híbrida:** Integração fluida entre um SPA moderno e um Back-end robusto em Python utilizando as *Serverless Functions* da Vercel (`/api`). Isso eliminou problemas de CORS e reduziu o tempo de resposta das APIs para milissegundos.
+*   **Design Fluido com Container Queries:** Cards de ativos adaptativos que escalam tipografia e espaçamentos dinamicamente via `cqi` (Container Query Units) conforme a largura individual do card, garantindo legibilidade perfeita tanto em 1 coluna quanto em 2 colunas no mobile ou na grade de 3 colunas para impressão.
+*   **Resiliência no Web Scraping:** Mecanismos de *fallback* e cálculos de proventos e cotações direto na API Python para contornar bloqueios de IP ao buscar o *Dividend Yield* na B3.
+*   **Integração com IA (Smart Prompt & Google Gemini):** O sistema compila o snapshot financeiro da carteira (ativos, preço médio, variação diária, status da Bola de Neve) e gera um prompt formatado sob a metodologia Barsi para análise tática instantânea com atalho direto para o Google Gemini.
 *   **CRON Jobs e Mensageria:** Utilização de *Edge Functions* (Deno/Supabase) para varrer o banco de dados de usuários, compilar o fechamento de mercado e disparar relatórios transacionais via Resend API.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-**Front-end (branch `main` — estável):**
-*   HTML5, CSS3 (Bootstrap 5) & JavaScript (ES6+)
-*   Arquitetura MVC (Model-View-Controller)
-*   Vite (Build Tool)
+**Front-end:**
+*   **React 19** + **Vite**
+*   **React Router DOM** (History API com rotas limpas)
+*   **Context API** (Gerenciamento de sessão global e Google OAuth)
+*   **Custom Hooks** (`useAssets` como Single Source of Truth e ciclo SWR)
+*   **CSS3 Moderno** (Bootstrap 5, Container Queries, Flexbox/Grid e `@media print`)
 
-**Front-end (branch `feature/react-migration` — em andamento):**
-*   **React 19** + Vite
-*   **React Router DOM** (rotas com History API)
-*   **Context API** (gerenciamento de sessão global)
-*   **Custom Hooks** (`useAssets`) para lógica de negócio
-
-O dashboard React também oferece controle de densidade dos cards, impressão em grade de três colunas, detalhes de dividendos recolhíveis e um prompt de carteira com atalho ao Gemini.
+O dashboard React oferece:
+- **Navegação Rápida no Painel (Raio-X):** toque/clique em qualquer quadradinho de ativo para rolar suavemente até o card correspondente com destaque visual; mantenha pressionado (ou passe o cursor) para ver o balão com resumo de variação (P.M. e Hoje).
+- **Gaveta Inferior Compacta e Fluida:** botão discreto e ergonômico no rodapé mobile/desktop para cadastro de ativos com busca instantânea e autocomplete.
+- **Controle de Densidade dos Cards:** slider com adaptação dinâmica via Container Queries em mobile e desktop.
+- **Impressão Nativa Formatada:** grade fixa de 3 colunas em densidade otimizada para relatórios e PDFs.
+- **Detalhes de Dividendos Sincronizados:** abertura e fechamento unificados entre todos os ativos da carteira.
+- **Painel Consolidado:** patrimônio investido, variação global e DY anual/mensal com disclaimers de estimativa.
+- **Smart Prompt de IA:** snapshot da carteira com metodologia Barsi e link direto para o Google Gemini.
 
 **Back-end & API:**
-*   Python 3 & FastAPI
+*   Python 3 & FastAPI (Mangum serverless handler)
 *   Vercel Serverless Functions (`/api`)
-*   `yfinance` & `requests` (Integração B3)
+*   `requests` & Yahoo Finance Chart API (Integração B3)
 
 **Banco de Dados, Autenticação & Automação:**
-*   Supabase (PostgreSQL)
-*   Supabase Auth (OAuth Google)
+*   Supabase (PostgreSQL com Row Level Security)
+*   Supabase Auth (OAuth Google com prompt de seleção de conta)
 *   Supabase Edge Functions (Deno)
 *   Resend API (Disparo de E-mails)
 
@@ -125,13 +129,14 @@ Este documento apresenta o planejamento estratégico e o acompanhamento das fase
 * [x] **Transparência de Indicadores (DY):** Inserção de ícones informativos ("i") customizados e responsivos nas boxes de DY (tanto no painel consolidado quanto nos cards individuais), detalhando a base de cálculo de 12 meses via Yahoo Finance e lembrando seu caráter estimado/não garantido.
 * [x] **Estética Inspirada no Ecossistema de E-mail:** Customização visual do header com o ícone de envelope estilizado em tons de destaque e sino de notificações em amarelo vivo.
 * [x] **Estabilização do Layout Mobile:** Resolução do vazamento horizontal de tela (`overflow-x`) e aprimoramento da gaveta inferior (`bottom-drawer`), garantindo margem de segurança (`safe-area-inset-bottom`) e respiro visual para o botão flutuante de adição de ativos.
-* [x] **Densidade dos Cards:** Controle para exibir de 1 a 3 cards por linha no desktop e até 2 no celular.
-* [x] **Impressão da Carteira:** Ação nos controles do dashboard; impressão sempre usa três cards por linha, independente da densidade selecionada na tela.
-* [x] **Detalhes de Dividendos Recolhíveis:** Yield anual permanece visível; renda estimada e grade mensal ficam na aba expansível, sincronizada entre ativos.
-* [x] **Atalho para o Prompt de IA:** Botão `IA` nos controles rola até o prompt; `Pergunte ao Gemini` fica abaixo do campo do prompt.
+* [x] **Densidade dos Cards & Tipografia Fluida:** Controle dinâmico para exibir de 1 a 3 cards por linha no desktop e até 2 no celular, com *Container Queries* reescalando tipografia, badges e o grid de 12 meses para evitar quebras em telas estreitas.
+* [x] **Impressão da Carteira:** Ação nos controles do dashboard; impressão sempre usa três cards por linha em layout limpo e otimizado, independente da densidade selecionada na tela.
+* [x] **Gaveta Inferior Compacta e Unificada:** Barra de "+ NOVO ATIVO" redesenhada com altura discreta (64px) para não cobrir informações dos cards; quando aberta, transforma-se em um botão sutil de "FECHAR" perfeitamente integrado à borda superior do formulário.
+* [x] **Detalhes de Dividendos Recolhíveis:** Yield anual permanece visível; renda estimada e grade mensal ficam na aba expansível, com abertura e fechamento sincronizados bidirecionalmente entre todos os ativos.
+* [x] **Atalho para o Prompt de IA:** Botão `IA` nos controles rola suavemente até o prompt; `Pergunte ao Gemini` fica logo abaixo do campo do prompt com envio formatado sob a metodologia Barsi.
 * [ ] **Compartilhamento da Carteira:** Geração de card/resumo visual da carteira para redes sociais.
 
-> A conclusão da migração React ainda depende da auditoria e remoção segura dos arquivos Vanilla não utilizados e da validação de build, rotas e Preview. Consulte a sequência em [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
+> Status detalhado da migração e arquitetura em [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md) e [`AGENTS.md`](AGENTS.md).
 
 ---
 

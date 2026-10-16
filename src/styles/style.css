@@ -22,7 +22,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    margin-bottom: 140px; /* Espaço para a gaveta não cobrir os cards */
+    margin-bottom: 90px; /* Espaço proporcional para a barra compacta de novo ativo */
 }
 
 

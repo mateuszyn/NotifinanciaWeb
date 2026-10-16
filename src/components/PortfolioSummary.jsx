@@ -18,6 +18,56 @@ export default function PortfolioSummary({ assets }) {
         ? (summary.annualDividends / summary.currentValue) * 100
         : 0;
 
+    const [hoveredTicker, setHoveredTicker] = React.useState(null);
+    const longPressTimerRef = React.useRef(null);
+    const isLongPressRef = React.useRef(false);
+
+    const scrollToAsset = (ticker) => {
+        const cleanTicker = ticker.replace(/[^a-zA-Z0-9]/g, '');
+        const targetEl = document.getElementById(`asset-card-${cleanTicker}`);
+        if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Adiciona um leve feedback visual de destaque no card
+            targetEl.classList.add('highlight-target');
+            setTimeout(() => targetEl.classList.remove('highlight-target'), 1200);
+        }
+    };
+
+    const handleTouchStart = (ticker) => {
+        isLongPressRef.current = false;
+        longPressTimerRef.current = setTimeout(() => {
+            isLongPressRef.current = true;
+            setHoveredTicker(ticker);
+            if (navigator.vibrate) {
+                try { navigator.vibrate(40); } catch (_) {}
+            }
+        }, 400); // 400ms para caracterizar o "segurar"
+    };
+
+    const handleTouchEnd = (ticker) => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+
+        if (!isLongPressRef.current) {
+            // Toque rápido -> leva ao ativo na carteira
+            setHoveredTicker(null);
+            scrollToAsset(ticker);
+        } else {
+            // Se segurou, fecha o popover após breve leitura (1.8s) ou no próximo toque fora
+            setTimeout(() => setHoveredTicker(null), 1800);
+        }
+    };
+
+    const handleTouchMove = () => {
+        // Se o usuário arrastou/fez scroll na tela, cancela o timer de segurar
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+    };
+
     return (
         <section className={`portfolio-summary ${borderClass} mb-4`} aria-label="Resumo consolidado da carteira">
             <div className="portfolio-summary-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -33,22 +83,38 @@ export default function PortfolioSummary({ assets }) {
                         const pmClass = pmVal >= 0 ? 'text-profit-pos' : 'text-profit-neg';
                         const dailyClass = dailyVal >= 0 ? 'text-profit-pos' : 'text-profit-neg';
                         const squareBorderClass = pmVal >= 0 ? 'border-success' : 'border-danger';
+                        const isVisible = hoveredTicker === asset.ticker;
 
                         return (
-                            <details key={asset.id || asset.ticker} className="ticker-square-wrapper">
-                                <summary className={`ticker-square ${squareBorderClass}`} title={asset.ticker}>
+                            <div 
+                                key={asset.id || asset.ticker} 
+                                className="ticker-square-wrapper"
+                                onMouseEnter={() => setHoveredTicker(asset.ticker)}
+                                onMouseLeave={() => setHoveredTicker(null)}
+                            >
+                                <button
+                                    type="button"
+                                    className={`ticker-square ${squareBorderClass}`} 
+                                    title={`${asset.ticker} - Toque para ir ao card, segure para ver variação`}
+                                    onClick={() => scrollToAsset(asset.ticker)}
+                                    onTouchStart={() => handleTouchStart(asset.ticker)}
+                                    onTouchEnd={() => handleTouchEnd(asset.ticker)}
+                                    onTouchMove={handleTouchMove}
+                                >
                                     <span className="ticker-symbol">{asset.ticker.replace(/\.SA$/i, '')}</span>
-                                </summary>
-                                <div className="ticker-popover text-start">
-                                    <div className="ticker-popover-title"><strong>{asset.ticker}</strong></div>
-                                    <div className="ticker-popover-row">
-                                        <span>P.M.:</span> <strong className={pmClass}>{pmVal >= 0 ? '+' : ''}{pmVal.toFixed(2)}%</strong>
+                                </button>
+                                {isVisible && (
+                                    <div className="ticker-popover text-start" role="tooltip">
+                                        <div className="ticker-popover-title"><strong>{asset.ticker}</strong></div>
+                                        <div className="ticker-popover-row">
+                                            <span>P.M.:</span> <strong className={pmClass}>{pmVal >= 0 ? '+' : ''}{pmVal.toFixed(2)}%</strong>
+                                        </div>
+                                        <div className="ticker-popover-row">
+                                            <span>Hoje:</span> <strong className={dailyClass}>{dailyVal >= 0 ? '+' : ''}{dailyVal.toFixed(2)}%</strong>
+                                        </div>
                                     </div>
-                                    <div className="ticker-popover-row">
-                                        <span>Hoje:</span> <strong className={dailyClass}>{dailyVal >= 0 ? '+' : ''}{dailyVal.toFixed(2)}%</strong>
-                                    </div>
-                                </div>
-                            </details>
+                                )}
+                            </div>
                         );
                     })}
                 </div>

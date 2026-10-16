@@ -145,10 +145,16 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
 
     return (
         <div className={`bottom-drawer ${isOpen ? '' : 'collapsed'}`}>
-            <div className="drawer-header px-3 pb-3 pt-2" onClick={toggleDrawer} style={{ cursor: 'pointer' }}>
-                <div className="drag-handle mx-auto mb-2" style={{ width: '40px', height: '5px', background: '#495057', borderRadius: '5px' }}></div>
-                <button className="btn btn-success w-100 fw-bold py-3 mt-1 mb-3 shadow-lg fake-add-btn" style={{ borderRadius: '12px', fontSize: '1.05rem', letterSpacing: '0.5px' }}>
-                    + NOVO ATIVO
+            <div className="drawer-header" onClick={toggleDrawer} style={{ cursor: 'pointer' }}>
+                <div className="drag-handle mx-auto"></div>
+                <button
+                    type="button"
+                    className="fake-add-btn"
+                    aria-expanded={isOpen}
+                    aria-label={isOpen ? "Fechar gaveta de novo ativo" : "Abrir gaveta de novo ativo"}
+                >
+                    <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-plus-lg'} me-1`} aria-hidden="true"></i>
+                    {isOpen ? 'FECHAR' : 'NOVO ATIVO'}
                 </button>
             </div>
             

@@ -63,6 +63,7 @@
 .asset-card-wrapper {
     min-width: 0;
     container-type: inline-size;
+    scroll-margin-top: 85px;
 }
 
 .asset-card-wrapper > .asset-card {
@@ -83,6 +84,59 @@
 
 .asset-card-actions .btn {
     font-size: inherit;
+}
+
+/* Escala fluida para todos os textos e blocos do card conforme a largura do container */
+.asset-card-wrapper .price-value {
+    font-size: clamp(0.85rem, 5.2cqi, 1.1rem);
+}
+
+.asset-card-wrapper .price-label {
+    font-size: clamp(0.6rem, 3.2cqi, 0.72rem);
+}
+
+.asset-card-wrapper .asset-broker-link {
+    font-size: clamp(0.78rem, 3.8cqi, 1rem);
+    height: clamp(36px, 12cqi, 45px) !important;
+    padding: 4px 8px;
+}
+
+/* Ajustes compactos para cards com menos de 280px (ex: 2 colunas no mobile) */
+@container (max-width: 280px) {
+    .asset-card-wrapper .asset-card {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .asset-card-wrapper .price-value span.small {
+        display: block;
+        font-size: 0.72rem;
+    }
+
+    .asset-card-wrapper .dividend-box-container {
+        padding: 6px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .asset-card-wrapper .asset-dividends-details > summary {
+        font-size: 0.7rem;
+    }
+
+    .asset-card-wrapper .asset-dividends-details > summary > .badge {
+        font-size: 0.68rem;
+        padding: 3px 5px;
+    }
+
+    .asset-card-wrapper .months-grid-container {
+        padding: 2px !important;
+        gap: 1px;
+    }
+
+    .asset-card-wrapper .month-box {
+        font-size: 0.55rem;
+        height: 16px;
+        border-radius: 2px;
+    }
 }
 
 .asset-card-dy-info {
@@ -404,6 +458,14 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    padding: 0;
+    outline: none;
+}
+
+.highlight-target > .asset-card {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.6), 0 10px 30px rgba(13, 110, 253, 0.25) !important;
+    transform: translateY(-4px);
+    transition: all 0.3s ease;
 }
 
 .ticker-square:hover {

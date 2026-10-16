@@ -17,28 +17,66 @@
 }
 
 .bottom-drawer.collapsed {
-    /* Altura ajustada para 95px para garantir que o botão + NOVO ATIVO apareça por completo com o novo respiro do JS */
-    transform: translate(-50%, calc(100% - 95px));
+    /* Altura reduzida e proporcional: apenas a barra com o botão compacto visível */
+    transform: translate(-50%, calc(100% - 64px));
 }
 
 .drawer-header {
-    padding: 10px 20px 10px; /* Reduzido de 20px para 10px pois o botão agora já tem sua própria margem (mb-3) */
+    padding: 6px 16px 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     cursor: pointer;
+    gap: 4px;
 }
 
 .drag-handle {
-    width: 40px;
+    width: 36px;
     height: 4px;
     background-color: #495057;
     border-radius: 10px;
-    margin-bottom: 5px;
+    opacity: 0.8;
+}
+
+.fake-add-btn {
+    width: 100%;
+    max-width: 420px;
+    height: 40px;
+    background: #28a745;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(40, 167, 69, 0.35);
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.fake-add-btn:hover {
+    background: #218838;
+    box-shadow: 0 6px 18px rgba(40, 167, 69, 0.45);
+}
+
+.bottom-drawer:not(.collapsed) .fake-add-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    font-size: 0.8rem;
+    height: 32px;
+}
+
+.bottom-drawer:not(.collapsed) .fake-add-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
 }
 
 .drawer-content {
-    padding: 10px 15px 40px 15px;
+    padding: 6px 16px 24px 16px;
     overflow-x: hidden; /* Corta vazamentos laterais causados por colunas ou rows do Bootstrap */
 }
 
