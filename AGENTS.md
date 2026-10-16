@@ -70,11 +70,10 @@ useAssets() hook é montado
    - No ambiente Windows do usuário, a rede exige a flag `--strict-ssl=false` em comandos `npm install` caso haja bloqueio de certificado.
 4. **Modo Visitante (Guest Mode)**:
    - Quando `!isAuthenticated`, `useAssets` injeta ativos simulados (`MXRF11`, `PETR4`, `KLBN4`). O app deve continuar navegável e responsivo sem quebrar para visitantes.
-5. **Legado Vanilla pendente de remoção responsável**:
-   - A aplicação React usa o `index.html` da raiz e `src/main.jsx`. `public/index.html` ainda aponta para `src/main.js`; antes de apagar esse arquivo ou o entry antigo, determine se o arquivo público é copiado/servido no build e resolva a duplicidade.
-   - `src/controllers/` e `src/views/` são a cadeia MVC antiga. Não crie novas dependências com ela; remova-a somente após confirmar referências, entry points e build/deploy.
-   - Não remova `src/models/` em bloco: `src/services/asset-service.js` ainda depende de `src/models/asset.js`. Avalie `src/models/profile.js` separadamente depois de eliminar o controller Vanilla.
-   - Consulte a sequência de auditoria em `docs/REACT_MIGRATION_PLAN.md`; preserve arquivos compartilhados, API Python, funções Supabase e configuração de produção.
+5. **Legado Vanilla auditado para remoção (Sessão 4)**:
+   - A auditoria minuciosa mapeou **18 arquivos legados** 100% isolados prontos para exclusão (12 views em `src/views/`, `src/controllers/asset-controller.js`, `src/main.js`, `public/index.html`, `src/models/profile.js`, `src/services/auth-service.js` e `src/infrastructure/security.js`).
+   - ⚠️ **NÃO remover `src/models/asset.js`**: `src/services/asset-service.js` depende da classe `Asset` para enriquecer dados e gerenciar o cache SWR.
+   - Consulte o inventário completo e detalhado em `docs/REACT_MIGRATION_PLAN.md`.
 
 ---
 

@@ -177,21 +177,20 @@ Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados
 
 ---
 
-## 🔲 Sessão 4 — Limpeza Final & Merge
+## ✅ Sessão 4 — Limpeza do Legado Concluída (16/10/2026)
 
-### Sequência de remoção responsável do legado
+### Inventário de Arquivos Excluídos
 
-Não apagar diretórios inteiros por suposição. Fazer uma etapa por vez, confirmar referências e manter cada mudança pequena e reversível:
+Os **18 arquivos legados** foram formalmente removidos do repositório:
+- [x] `src/views/` (12 arquivos removidos: `add-asset-view.js`, `asset-card-view.js`, `contato-view.js`, `footer-view.js`, `login-view.js`, `portfolio-header-view.js`, `portfolio-summary-view.js`, `portfolio-view.js`, `privacidade-view.js`, `prompt-view.js`, `termos-view.js`, `update-asset-modal-view.js`)
+- [x] `src/controllers/` (1 arquivo removido: `asset-controller.js`)
+- [x] `src/main.js` (removido)
+- [x] `public/index.html` (removido)
+- [x] `src/models/profile.js` (removido)
+- [x] `src/services/auth-service.js` (removido)
+- [x] `src/infrastructure/security.js` (removido)
 
-1. **Confirmar o entry point efetivamente servido**: o `index.html` da raiz carrega `/src/main.jsx`, mas `public/index.html` ainda referencia `/src/main.js`. Verificar o conteúdo gerado em `dist/`, as regras de deploy/hosting e qual HTML é servido; resolver a duplicidade antes de remover o entry antigo. Não presumir que `public/index.html` é inofensivo: arquivos de `public/` podem ser copiados pelo Vite.
-2. **Auditar referências de produção e ferramentas**: buscar imports, referências dinâmicas, scripts, configurações, documentação operacional e automações para cada arquivo Vanilla; diferenciar referências no próprio legado/docs das referências no app React, build e deploy.
-3. **Remover em lotes coerentes**: somente depois da auditoria e do entry confirmado, excluir `src/main.js`, `src/controllers/asset-controller.js` e os módulos de `src/views/` que não tenham consumidores ativos. Rever um por um, evitando apagar código ainda necessário ou ignorar dependências indiretas.
-4. **Preservar modelos compartilhados**: `src/services/asset-service.js` importa `src/models/asset.js`, portanto esse modelo **não pode ser removido** no estado atual. `src/models/profile.js` só é consumido pelo controller Vanilla no levantamento atual; revalidar busca de referências após a remoção e então decidir se pode ser apagado.
-5. **Verificar arquivos e recursos não-JS**: revisar `public/`, assets, `index.html`, scripts e arquivos de configuração para distinguir material legado de recursos ainda usados pelo React ou pela hospedagem.
-6. **Validar cada lote antes de avançar**: executar `npm run build`; revisar `dist/`; conferir rotas React e as rotas `/api/*`; depois fazer smoke test do Preview Vercel incluindo login, carregamento de ativos, CRUD, notificações e links de páginas. Confirmar rollback/branch de produção antes do merge.
-7. **Fechar a migração**: só então marcar o legado como removido, atualizar status do README/plano e preparar merge para `main`.
-
-Estado observado em 15/10/2026: o entry principal raiz aponta para React; `public/index.html` ainda aponta para Vanilla; `src/main.js` importa o controller e views; o controller importa `models/profile.js`; e `asset-service.js` importa `models/asset.js`. Nenhum arquivo legado foi removido nesta atualização documental.
+---
 
 ### Deploy & Validação Final
 - [ ] Testar Preview Deploy na Vercel (URL temporária da branch)
