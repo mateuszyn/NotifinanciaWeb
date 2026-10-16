@@ -1,0 +1,93 @@
+# 🤖 Contexto para Agentes de IA & Engenheiros (AGENTS.md)
+
+Este documento foi projetado para que qualquer agente de IA (Cursor, Antigravity, Claude Code, Copilot, Aider) compreenda instantaneamente a arquitetura, o fluxo de dados e as regras do **NotifinanciaWeb_MVC** sem precisar varrer ou indexar todos os arquivos do repositório.
+
+---
+
+## 1. Visão Geral do Sistema
+O **Notifinancia** é um web app financeiro para investidores pessoa física acompanharem suas ações e fundos imobiliários (FIIs) da B3.
+- **Front-end**: React 19 (SPA) empacotado com Vite.
+- **Back-end Serverless**: Python (FastAPI + Mangum) consultando Yahoo Finance via chart API (2 anos de histórico para proventos/meses pagos e 1 ano para DY).
+- **Banco de Dados & Autenticação**: Supabase (PostgreSQL + Google OAuth).
+- **Hospedagem & Orquestração**: Vercel (unifica a rota `/api/*` em Python com o SPA estático).
+
+---
+
+## 2. Mapa Rápido de Arquivos (Onde Alterar o Quê)
+
+Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
+
+| Responsabilidade | Arquivo Chave | O que faz |
+|---|---|---|
+| **Ponto de entrada React** | `src/main.jsx` & `src/App.jsx` | Roteamento (`react-router-dom`), AuthProvider e click listener global |
+| **Página Principal** | `src/pages/Dashboard.jsx` | Orquestra Header, Resumo da Carteira, Grid de Cards, Modais e Drawer |
+| **Card de Ativo Individual** | `src/components/AssetCard.jsx` | Exibe PM, Preço Atual, Variação, DY anual e detalhes recolhíveis de **Dividendos**, **Grid 12 meses rolantes** e **Bola de Neve** |
+| **Painel de Resumo** | `src/components/PortfolioSummary.jsx` | Total investido, variação global, DY médio, grid de tickers com popovers |
+| **Adicionar Ativo (Drawer)** | `src/components/AddAssetDrawer.jsx` | Drawer deslizante, autocomplete de tickers B3, botão "$ Atual" e validação |
+| **Editar Ativo (Modal)** | `src/components/UpdateAssetModal.jsx` | Modal de ajuste de quantidade e PM com botões rápidos (+10, +100, etc.) |
+| **Cabeçalho & Filtros** | `src/components/Header.jsx` | Logo, select de ordenação, select de corretora, sino (balão 18h) e menu de usuário |
+| **Estado Global da Carteira** | `src/hooks/useAssets.js` | **Single Source of Truth**: SWR, CRUD (add, update, delete, refresh), filtros e perfil |
+| **Autenticação** | `src/context/AuthContext.jsx` | Sessão Supabase, Google OAuth com `prompt: 'select_account'` |
+| **Serviço de Dados (Assets)** | `src/services/asset-service.js` | Chamadas ao Supabase (`assets`) e chamadas à API Python (`/api/market-data`) |
+| **API Python (Back-end)** | `api/index.py` & `api/services/marketService.py` | FastAPI scraping Yahoo Finance: cotação, DY anual e array `paidMonths` |
+| **Dicionário de Tickers B3** | `src/utils/ticker-dictionary.js` | Lista estática de ações e FIIs da B3 para sugestões instantâneas no front |
+| **Configuração de Corretoras** | `src/utils/brokers.js` | Cores, links diretos para Play Store/Web e identidade visual de cada broker |
+| **Estilos Globais e Cards** | `src/styles/cards.css` & `src/styles/style.css` | Cores dinâmicas de rentabilidade, grade responsiva, impressão em densidade máxima (3 cards por linha), tamanhos responsivos dos controles, `.month-box` e `.asset-card` |
+
+---
+
+## 3. Fluxo de Dados e Ciclo de Vida (Data Flow)
+
+```
+[ Usuário abre a página ]
+       │
+       ▼
+useAssets() hook é montado
+       ├── 1. Lê 'profiles' no Supabase (ordenação salva, corretora favorita, alertas)
+       ├── 2. Lê 'assets' no Supabase -> Dados aparecem INSTANTANEAMENTE via cache (cached_price, cached_yield, cached_paid_months)
+       └── 3. Dispara SWR em segundo plano:
+                 GET /api/market-data?tickers=PETR4.SA,MXRF11.SA
+                         │
+                         ▼ (Python FastAPI via Yahoo Finance)
+                 Retorna { results: { "PETR4.SA": { price, changePercent, yieldpct, paidMonths } } }
+                         │
+                         ▼
+                 asset.enrich(marketData) atualiza o estado React
+                 e salva cache silencioso no Supabase (saveCacheBackground)
+```
+
+---
+
+## 4. Regras Críticas para Qualquer Agente (Não Quebre Isto!)
+
+1. **Como rodar localmente**:
+   - ❌ NUNCA rode apenas `npm run dev` se precisar testar cotações em tempo real: o Vite puro não roteia `/api/market-data` para o Python.
+   - ✅ SEMPRE execute **`vercel dev`** (que sobe na porta `3000` o Vite + Python integrados via proxy reverso).
+2. **Bibliotecas CSS/JS Globais**:
+   - Bootstrap 5.3 e SweetAlert2 são carregados via CDN no `index.html`.
+   - ❌ NÃO instale pacotes npm do Bootstrap JS ou tente importar modais via npm. Use `window.Swal` ou `useState` nativo do React.
+3. **Instalação de Pacotes NPM**:
+   - No ambiente Windows do usuário, a rede exige a flag `--strict-ssl=false` em comandos `npm install` caso haja bloqueio de certificado.
+4. **Modo Visitante (Guest Mode)**:
+   - Quando `!isAuthenticated`, `useAssets` injeta ativos simulados (`MXRF11`, `PETR4`, `KLBN4`). O app deve continuar navegável e responsivo sem quebrar para visitantes.
+5. **Legado Vanilla auditado para remoção (Sessão 4)**:
+   - A auditoria minuciosa mapeou **18 arquivos legados** 100% isolados prontos para exclusão (12 views em `src/views/`, `src/controllers/asset-controller.js`, `src/main.js`, `public/index.html`, `src/models/profile.js`, `src/services/auth-service.js` e `src/infrastructure/security.js`).
+   - ⚠️ **NÃO remover `src/models/asset.js`**: `src/services/asset-service.js` depende da classe `Asset` para enriquecer dados e gerenciar o cache SWR.
+   - Consulte o inventário completo e detalhado em `docs/REACT_MIGRATION_PLAN.md`.
+
+---
+
+## 5. Regras de Negócio Específicas
+- **Bola de Neve (Magic Number)**: `rendaMensalPorCota = (currentPrice * (yieldPct / 100)) / 12`. Cotas necessárias: `Math.ceil(currentPrice / rendaMensalPorCota)` (ou de forma direta `Math.ceil(1200 / yieldPct)`). **Nunca** deve variar em função da quantidade de cotas que o investidor possui.
+- **Validação de Ticker Duplicado**: Não permitir cadastrar o mesmo ticker mais de uma vez na carteira (`existingTickers.some(...)`). O usuário deve editar a quantidade existente.
+- **DARF em Exclusão**: FIIs (ticker terminado em `11`) vendidos com lucro apurado têm retenção de 20% de IR via DARF (código 6015). O SweetAlert2 deve orientar o usuário sobre a data limite do DARF antes de confirmar a exclusão.
+- **Corretoras**: Links nos cards devem priorizar `brokerInfo.appUrl` (Play Store/Mobile) em relação ao link web.
+
+---
+
+## 6. Estado Atual & Próximas Tarefas
+- **Prompt de IA (`PromptView.jsx`)**: portado e enriquecido com snapshot compacto da carteira, análise mensal baseada em notícias e fatores macro/micro, recomendação fundamentada de aporte e acesso ao Gemini. O botão `IA` nos controles rola até o prompt; `Pergunte ao Gemini` fica abaixo do prompt.
+- **Visualização da carteira**: controles de impressão e densidade implementados; impressão força três cards por linha. No celular, a grade permite até duas colunas.
+- **Dividendos nos cards**: Yield anual sempre visível; detalhes recolhíveis sincronizam a abertura entre os ativos e permanecem abertos ao clicar no conteúdo. Cabeçalho mantém informação à esquerda, Yield central e seta à direita. Rendas mensal/anual são separadas por borda; projeções mostram somente `+ X cotas`.
+- **Próxima prioridade**: concluir a auditoria e remoção responsável do legado descrita em `docs/REACT_MIGRATION_PLAN.md`.
+- **Backlog posterior**: compartilhamento visual da carteira; refinamento da animação de notificações.

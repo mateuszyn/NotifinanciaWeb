@@ -4,13 +4,16 @@
 
 O **Notifinancia** é uma plataforma web completa desenvolvida para o acompanhamento estratégico de ações e Fundos Imobiliários (FIIs) da B3. Inspirado na metodologia Barsi de investimento focado em dividendos, o sistema oferece cotações em tempo real, cálculos automáticos de preço médio, alertas de variação e relatórios diários automatizados direto no e-mail do usuário.
 
+> 🚧 **Em migração arquitetural:** A branch `feature/react-migration` contém a reescrita do front-end em **React + Vite** e melhorias recentes de UX. A auditoria e remoção segura dos arquivos MVC Vanilla ainda está pendente antes de concluir a migração. Veja [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
+
 ---
 
 ## 💡 Destaques Técnicos (Visão para Recrutadores)
 
 Este projeto foi construído com foco em **performance, resiliência e UX**, resolvendo desafios reais de engenharia de software:
 
-*   **Arquitetura Serverless Híbrida:** Integração fluida entre um Front-end MVC e um Back-end robusto em Python utilizando as *Serverless Functions* da Vercel. Isso eliminou problemas de CORS e reduziu o tempo de resposta das APIs para milissegundos.
+*   **Migração Arquitetural Planejada (React):** O projeto está sendo portado de uma arquitetura MVC Vanilla JS para React, adotando Custom Hooks, Context API e componentização orientada a mercado. A estratégia de migração incremental (*Strangler Fig*) garante que a versão de produção nunca ficou fora do ar durante o processo.
+*   **Arquitetura Serverless Híbrida:** Integração fluida entre um Front-end e um Back-end robusto em Python utilizando as *Serverless Functions* da Vercel. Isso eliminou problemas de CORS e reduziu o tempo de resposta das APIs para milissegundos.
 *   **Resiliência no Web Scraping:** Implementação de mecanismos de *fallback* e cálculos matemáticos "na raça" no Back-end (Python/yfinance) para contornar bloqueios de IP ao buscar o *Dividend Yield* em ambientes de nuvem.
 *   **Integração com IA (Prompt Engineering):** O sistema não apenas exibe dados, mas conta com um motor gerador de *Smart Prompts*. Ele compila os dados da carteira do usuário (ativos, preço médio, variação diária, quantidade) e gera um prompt otimizado para o Google Gemini retornar análises táticas de aporte e leitura de cenário.
 *   **CRON Jobs e Mensageria:** Utilização de *Edge Functions* (Deno/Supabase) para varrer o banco de dados de usuários, compilar o fechamento de mercado e disparar relatórios transacionais via Resend API.
@@ -19,10 +22,18 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 
 ## 🛠️ Tecnologias Utilizadas
 
-**Front-end:**
+**Front-end (branch `main` — estável):**
 *   HTML5, CSS3 (Bootstrap 5) & JavaScript (ES6+)
-*   Arquitetura MVC (Model-View-Controller) local
+*   Arquitetura MVC (Model-View-Controller)
 *   Vite (Build Tool)
+
+**Front-end (branch `feature/react-migration` — em andamento):**
+*   **React 19** + Vite
+*   **React Router DOM** (rotas com History API)
+*   **Context API** (gerenciamento de sessão global)
+*   **Custom Hooks** (`useAssets`) para lógica de negócio
+
+O dashboard React também oferece controle de densidade dos cards, impressão em grade de três colunas, detalhes de dividendos recolhíveis e um prompt de carteira com atalho ao Gemini.
 
 **Back-end & API:**
 *   Python 3 & FastAPI
@@ -31,7 +42,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 
 **Banco de Dados, Autenticação & Automação:**
 *   Supabase (PostgreSQL)
-*   Supabase Auth (Magic Links / OAuth)
+*   Supabase Auth (OAuth Google)
 *   Supabase Edge Functions (Deno)
 *   Resend API (Disparo de E-mails)
 
@@ -114,9 +125,13 @@ Este documento apresenta o planejamento estratégico e o acompanhamento das fase
 * [x] **Transparência de Indicadores (DY):** Inserção de ícones informativos ("i") customizados e responsivos nas boxes de DY (tanto no painel consolidado quanto nos cards individuais), detalhando a base de cálculo de 12 meses via Yahoo Finance e lembrando seu caráter estimado/não garantido.
 * [x] **Estética Inspirada no Ecossistema de E-mail:** Customização visual do header com o ícone de envelope estilizado em tons de destaque e sino de notificações em amarelo vivo.
 * [x] **Estabilização do Layout Mobile:** Resolução do vazamento horizontal de tela (`overflow-x`) e aprimoramento da gaveta inferior (`bottom-drawer`), garantindo margem de segurança (`safe-area-inset-bottom`) e respiro visual para o botão flutuante de adição de ativos.
-* [ ] **Alternância de Zoom no Portfólio:** Implementação de um controle de zoom para visualização compacta ou expandida dos cards da carteira na versão mobile.
-* [ ] **Impressão e Exportação Avançada da Carteira:** Adicionar ícone de atalho no header para disparo de impressão layout-desktop (grid completo exibindo todos os ativos organizados lado a lado, ignorando o formato mobile simplificado). *(Pendente)*
-* [ ] **Otimização Mobile:** Implementação de acordeões para ocultar/mostrar detalhes de DY e Renda em telas menores.
+* [x] **Densidade dos Cards:** Controle para exibir de 1 a 3 cards por linha no desktop e até 2 no celular.
+* [x] **Impressão da Carteira:** Ação nos controles do dashboard; impressão sempre usa três cards por linha, independente da densidade selecionada na tela.
+* [x] **Detalhes de Dividendos Recolhíveis:** Yield anual permanece visível; renda estimada e grade mensal ficam na aba expansível, sincronizada entre ativos.
+* [x] **Atalho para o Prompt de IA:** Botão `IA` nos controles rola até o prompt; `Pergunte ao Gemini` fica abaixo do campo do prompt.
+* [ ] **Compartilhamento da Carteira:** Geração de card/resumo visual da carteira para redes sociais.
+
+> A conclusão da migração React ainda depende da auditoria e remoção segura dos arquivos Vanilla não utilizados e da validação de build, rotas e Preview. Consulte a sequência em [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
 
 ---
 
