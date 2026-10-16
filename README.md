@@ -1,10 +1,10 @@
 # 📈 Notifinancia
 
-> **Gestão Inteligente de Dividendos e Automação de Carteira**
+> **Gestão Inteligente de Dividendos e Acompanhamento de Carteira B3**
 
-O **Notifinancia** é uma plataforma web completa desenvolvida para o acompanhamento estratégico de ações e Fundos Imobiliários (FIIs) da B3. Inspirado na metodologia Barsi de investimento focado em dividendos, o sistema oferece cotações em tempo real, cálculos automáticos de preço médio, alertas de variação e relatórios diários automatizados direto no e-mail do usuário.
+O **Notifinancia** é um web app financeiro para investidores pessoa física acompanharem ações e Fundos Imobiliários (FIIs) da B3. Inspirado na metodologia Barsi de investimento focado em dividendos, o sistema oferece cotações em tempo real, cálculo automático de preço médio, simulador da Bola de Neve, análise via IA e relatórios diários automatizados por e-mail.
 
-> 🚀 **Front-end 100% migrado para React 19 + Vite!** A base legado Vanilla MVC foi totalmente descontinuada e removida. O sistema agora conta com arquitetura modular baseada em Componentes, Context API e Custom Hooks, com renderização fluida, Container Queries e integração direta com o Google Gemini. Veja [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md).
+> 🚀 **Front-end 100% migrado para React 19 + Vite.** A base legado Vanilla MVC foi totalmente descontinuada e removida. O sistema agora conta com arquitetura modular baseada em Componentes, Context API e Custom Hooks, com renderização fluida, Container Queries e integração direta com o Google Gemini.
 
 ---
 
@@ -12,153 +12,186 @@ O **Notifinancia** é uma plataforma web completa desenvolvida para o acompanham
 
 Este projeto foi construído com foco em **performance, resiliência e UX**, resolvendo desafios reais de engenharia de software:
 
-*   **Migração Arquitetural Completa (React 19):** Portado de um monólito MVC Vanilla JS para um SPA moderno em React 19 com Vite, aplicando Custom Hooks (`useAssets`), Context API para autenticação e isolamento de estado. A transição foi executada utilizando o padrão *Strangler Fig*, mantendo o sistema em produção e eliminando 18 arquivos legados ao final.
-*   **Arquitetura Serverless Híbrida:** Integração fluida entre um SPA moderno e um Back-end robusto em Python utilizando as *Serverless Functions* da Vercel (`/api`). Isso eliminou problemas de CORS e reduziu o tempo de resposta das APIs para milissegundos.
-*   **Design Fluido com Container Queries:** Cards de ativos adaptativos que escalam tipografia e espaçamentos dinamicamente via `cqi` (Container Query Units) conforme a largura individual do card, garantindo legibilidade perfeita tanto em 1 coluna quanto em 2 colunas no mobile ou na grade de 3 colunas para impressão.
-*   **Resiliência no Web Scraping:** Mecanismos de *fallback* e cálculos de proventos e cotações direto na API Python para contornar bloqueios de IP ao buscar o *Dividend Yield* na B3.
-*   **Integração com IA (Smart Prompt & Google Gemini):** O sistema compila o snapshot financeiro da carteira (ativos, preço médio, variação diária, status da Bola de Neve) e gera um prompt formatado sob a metodologia Barsi para análise tática instantânea com atalho direto para o Google Gemini.
-*   **CRON Jobs e Mensageria:** Utilização de *Edge Functions* (Deno/Supabase) para varrer o banco de dados de usuários, compilar o fechamento de mercado e disparar relatórios transacionais via Resend API.
+- **Migração Arquitetural Completa (React 19):** Portado de um monólito MVC Vanilla JS para um SPA moderno em React 19 com Vite, aplicando o padrão *Strangler Fig* — o sistema permaneceu em produção durante toda a transição. Resultou na eliminação de 18 arquivos legados, incluindo controllers, views e serviços da camada antiga. A lógica do *God Controller* foi distribuída em Custom Hooks (`useAssets`) e componentes atômicos.
+- **Arquitetura Serverless Híbrida:** SPA React integrado a um back-end Python (FastAPI + Mangum) via Serverless Functions da Vercel. Elimina problemas de CORS, garante escalabilidade automática e isola completamente o front-end do back-end — cada camada pode ser deployada de forma independente.
+- **Design Fluido com Container Queries:** Cards de ativos que escalam tipografia, badges e espaçamentos dinamicamente via unidades `cqi` conforme a largura individual de cada card, garantindo legibilidade perfeita em qualquer densidade — de 1 coluna no mobile até 3 colunas no print.
+- **Resiliência no Web Scraping:** Mecanismos de *fallback* e cálculos de proventos via Yahoo Finance Chart API para contornar variações de disponibilidade da B3.
+- **Integração com IA (Smart Prompt & Google Gemini):** O sistema compila um snapshot financeiro da carteira (ativos, preço médio, variação diária, status da Bola de Neve) e gera um prompt formatado sob a metodologia Barsi para análise tática instantânea com atalho direto para o Google Gemini.
+- **CRON Jobs e Mensageria:** *Edge Functions* (Deno/Supabase) varrem o banco, compilam o fechamento de mercado e disparam relatórios transacionais via Resend API.
+- **Guest Mode:** Visitantes não autenticados visualizam ativos simulados com dados reais de mercado, tornando o app totalmente navegável sem cadastro.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
 **Front-end:**
-*   **React 19** + **Vite**
-*   **React Router DOM** (History API com rotas limpas)
-*   **Context API** (Gerenciamento de sessão global e Google OAuth)
-*   **Custom Hooks** (`useAssets` como Single Source of Truth e ciclo SWR)
-*   **CSS3 Moderno** (Bootstrap 5, Container Queries, Flexbox/Grid e `@media print`)
-
-O dashboard React oferece:
-- **Navegação Rápida no Painel (Raio-X):** toque/clique em qualquer quadradinho de ativo para rolar suavemente até o card correspondente com destaque visual; mantenha pressionado (ou passe o cursor) para ver o balão com resumo de variação (P.M. e Hoje).
-- **Gaveta Inferior Compacta e Fluida:** botão discreto e ergonômico no rodapé mobile/desktop para cadastro de ativos com busca instantânea e autocomplete.
-- **Controle de Densidade dos Cards:** slider com adaptação dinâmica via Container Queries em mobile e desktop.
-- **Impressão Nativa Formatada:** grade fixa de 3 colunas em densidade otimizada para relatórios e PDFs.
-- **Detalhes de Dividendos Sincronizados:** abertura e fechamento unificados entre todos os ativos da carteira.
-- **Painel Consolidado:** patrimônio investido, variação global e DY anual/mensal com disclaimers de estimativa.
-- **Smart Prompt de IA:** snapshot da carteira com metodologia Barsi e link direto para o Google Gemini.
+- **React 19** + **Vite**
+- **React Router DOM** — History API com rotas limpas (`/termos`, `/privacidade`, `/contato`)
+- **Context API** — Gerenciamento de sessão global e Google OAuth
+- **Custom Hooks** — `useAssets` como Single Source of Truth com ciclo SWR manual
+- **CSS3 Moderno** — Bootstrap 5.3 (CDN), Container Queries, Flexbox/Grid, `@media print`
+- **SweetAlert2** (CDN) — Alertas interativos (DARF, confirmações, onboarding)
 
 **Back-end & API:**
-*   Python 3 & FastAPI (Mangum serverless handler)
-*   Vercel Serverless Functions (`/api`)
-*   `requests` & Yahoo Finance Chart API (Integração B3)
+- **Python 3.12** — versão fixada para compatibilidade com o runtime UV da Vercel
+- **FastAPI** + **Mangum** — handler serverless para o runtime da Vercel
+- **Vercel Serverless Functions** — rotas `/api/market-data` e `/api/ping`
+- **`requests`** + Yahoo Finance Chart API — cotações e histórico de proventos (B3)
 
 **Banco de Dados, Autenticação & Automação:**
-*   Supabase (PostgreSQL com Row Level Security)
-*   Supabase Auth (OAuth Google com prompt de seleção de conta)
-*   Supabase Edge Functions (Deno)
-*   Resend API (Disparo de E-mails)
+- **Supabase** — PostgreSQL com Row Level Security
+- **Supabase Auth** — OAuth Google com `prompt: 'select_account'`
+- **Supabase Edge Functions** (Deno) — CRON de e-mails de fechamento de mercado
+- **Resend API** — Disparo de e-mails transacionais
+
+---
+
+## ✅ Funcionalidades Implementadas
+
+**Carteira & Ativos**
+- CRUD completo de ativos da B3 (ações e FIIs) com validação de ticker duplicado
+- Cotações e variação diária em tempo real via Yahoo Finance
+- Cálculo de rentabilidade por preço médio (P.M.) e variação global da carteira
+- Histórico de dividendos dos últimos 12 meses rolantes por ativo
+- Dividend Yield anual e mensal (projeção estimada, com disclaimer)
+- Simulador da **Bola de Neve**: quantas cotas comprar para que os dividendos paguem uma nova cota por mês — cálculo desacoplado da quantidade atual do investidor
+
+**Painel Consolidado (Raio-X)**
+- Patrimônio atual, valor investido, variação global e DY anual/mensal da carteira
+- Grade de quadradinhos de tickers: **toque/clique** para rolar suavemente até o card do ativo com destaque visual; **pressione e segure** (ou passe o cursor no desktop) para ver o balão com P.M. e variação de hoje
+- Alerta automático de DARF ao excluir FII com lucro (código 6015, prazo e tutorial)
+
+**Autenticação & Perfil**
+- Login sem senha via Google OAuth (`prompt: 'select_account'`)
+- Persistência de preferências: ordenação, corretora favorita e notificações por e-mail
+- Guest Mode: ativos simulados para visitantes sem cadastro
+
+**UX & Visualização**
+- Detalhes de dividendos recolhíveis com abertura/fechamento sincronizados entre todos os cards
+- Controle de densidade dos cards (1 a 3 colunas no desktop, até 2 no mobile) com Container Queries
+- Impressão/exportação da carteira: grade fixa de 3 cards por linha em layout limpo, independente da densidade da tela
+- Gaveta inferior compacta para cadastro de novos ativos com autocomplete de tickers da B3 (offline, sem latência)
+- Tipografia e ações dos cards redimensionadas conforme a largura individual do card
+- Smart Prompt de IA com snapshot da carteira e metodologia Barsi; botão `IA` nos controles rola até o prompt; link direto para o Google Gemini logo abaixo
+
+**Automação & Relatórios**
+- Relatório diário de fechamento de mercado por e-mail via Supabase Edge Functions + Resend API
+- Sino de notificações no header com controle de ativação
+
+---
+
+## 🗺️ Roadmap
+
+### 🔜 Em Aberto — Próximas Prioridades
+
+- [ ] **Monetização (AdSense):** Injeção do bloco de Ads/parceiros para faturamento institucional
+- [ ] **Radar de Oportunidades:** Tela inicial pública (sem login obrigatório) exibindo seleção curada de ações e FIIs no mesmo layout dos cards, com botão "Adicionar à Carteira" e foco na Bola de Neve
+- [ ] **Busca Direta por Ativo:** Barra de pesquisa instantânea no Radar para consultar qualquer ticker da B3 com preview de custos e dividendos
+- [ ] **P/VP nos Cards:** Integração do indicador Preço/Valor Patrimonial (P/VP) via Yahoo Finance para análise de valuation em ações e FIIs — métrica crítica para a decisão de compra na metodologia Barsi
+- [ ] **Zoom / Escala Nativa Mobile:** Controle de escala de visualização para o usuário ver mais ativos simultaneamente no celular sem depender do zoom do navegador
+- [ ] **Notificações Customizáveis:** Painel para gerenciar frequência de e-mails e alertas de variações bruscas
+- [ ] **Progressive Web App (PWA):** App instalável na tela inicial com Web Push Notifications
+- [ ] **Compartilhamento / Impressão Visual:** Geração de card/imagem do extrato da carteira para exportação e compartilhamento (extensão da impressão nativa já existente)
+
+### ✅ Concluído (Histórico por Fase)
+
+**Fase 1 — Fundação, Legislação e Monetização Inicial**
+- [x] Alerta de DARF e tutorial na exclusão de FIIs com lucro
+- [x] Rodapé profissional com Termos, Privacidade, Contato e Disclaimer responsivos via React Router
+
+**Fase 2 — UX Fluida, Inteligência de Dados e Painel**
+- [x] Painel consolidado com patrimônio, variação global, DY anual/mensal e grade interativa de tickers com popover
+- [x] Transparência de indicadores: ícones informativos (ⓘ) com base de cálculo e disclaimer de estimativa
+- [x] Estabilização do layout mobile: overflow-x, safe-area-inset e gaveta inferior compacta
+- [x] Densidade dos cards e tipografia fluida via Container Queries (1–3 colunas desktop, 1–2 mobile)
+- [x] Impressão da carteira: sempre 3 cards por linha em layout limpo
+- [x] Gaveta inferior redesenhada: altura discreta, botão FECHAR integrado à borda do formulário
+- [x] Detalhes de dividendos recolhíveis com abertura/fechamento sincronizados
+- [x] Smart Prompt de IA com snapshot da carteira e link para o Google Gemini
+- [x] Navegação rápida no painel: toque/clique → scroll até o card; segurar → popover de variação
+
+**Fase 3 — Migração Completa para React 19**
+- [x] Portagem do monólito MVC Vanilla JS para SPA React 19 + Vite (padrão *Strangler Fig*)
+- [x] `useAssets` Custom Hook como Single Source of Truth com SWR manual
+- [x] `AuthContext` com Google OAuth e Guest Mode
+- [x] CRUD completo (adicionar, editar, excluir, retentar) com UX de confirmação via SweetAlert2
+- [x] Limpeza completa do legado: 18 arquivos removidos (12 views, 1 controller, main.js, index.html, profile.js, auth-service.js, security.js)
+- [x] `AGENTS.md` — guia de arquitetura para agentes de IA (mapa de arquivos, fluxo SWR, regras críticas)
 
 ---
 
 ## ⚙️ Instalação e Configuração
 
-Para configurar o ambiente de desenvolvimento local do Notifinancia e rodar o Front-end e o Back-end simultaneamente, siga os passos abaixo:
-
 ### 1. Pré-requisitos
-*   **Node.js:** Versão 24.x ou superior recomendada.
-*   **Python:** Versão 3.9 ou superior.
-*   **Git:** Para clonagem e versionamento.
-*   **Vercel CLI:** Para emular o ambiente de produção localmente (instale via npm: `npm i -g vercel`).
 
-### 2. Configuração Inicial
-Clone o repositório para sua máquina local e navegue até a pasta do projeto:
+- **Node.js** 24.x ou superior
+- **Python 3.12** — versão exata recomendada; versões superiores (3.13+) podem causar incompatibilidades com o runtime UV da Vercel
+- **Git**
+- **Vercel CLI** — `npm i -g vercel`
+
+### 2. Clonar o Repositório
+
 ```bash
-git clone [https://github.com/SEU-USUARIO/NotifinanciaWeb_MVC.git](https://github.com/SEU-USUARIO/NotifinanciaWeb_MVC.git)
+git clone https://github.com/SEU-USUARIO/NotifinanciaWeb_MVC.git
 cd NotifinanciaWeb_MVC
 ```
 
-### 3. Instalação de Dependências (Front-end)
-Instale os pacotes necessários (Vite, Supabase SDK, etc) executando na pasta raiz:
+### 3. Instalar Dependências (Front-end)
 
 ```bash
 npm install
-``` 
-Nota sobre permissões (Windows/PowerShell): Caso receba um erro de "execução de scripts desabilitada" ao tentar rodar comandos no VS Code, isso ocorre devido à política de segurança do Windows. Para liberar a execução no terminal, abra o PowerShell como Administrador e execute: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser.
+```
 
+> **Windows / PowerShell:** Caso receba erro de "execução de scripts desabilitada", abra o PowerShell como Administrador e execute:
+> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+> **Rede corporativa / certificado bloqueado:** use `npm install --strict-ssl=false`
 
 ### 4. Variáveis de Ambiente
-Na raiz do projeto, crie um arquivo chamado .env. Adicione as seguintes variáveis para a conexão com o banco de dados:
 
-```bash
+Crie um arquivo `.env` na raiz do projeto:
+
+```env
 VITE_SUPABASE_URL=sua_url_do_supabase_aqui
 VITE_SUPABASE_ANON_KEY=sua_chave_anon_do_supabase_aqui
 ```
-(Certifique-se de nunca commitar este arquivo. Ele já deve estar ignorado no .gitignore).
 
-### 5. Execução do Projeto (Front + API Serverless)
-Como o projeto utiliza a infraestrutura da Vercel para rodar o Python na pasta /api, não utilizamos o comando padrão do Vite. Para iniciar o orquestrador completo, execute:
+> ⚠️ Nunca commite este arquivo. Ele já deve estar no `.gitignore`.
+
+### 5. Rodar o Projeto (Front-end + API Python)
 
 ```bash
 vercel dev
 ```
-O Vercel CLI irá subir o servidor de desenvolvimento, conectar a API Python e disponibilizar a aplicação, geralmente no endereço: http://localhost:3000.
 
-### 📱 Funcionalidades
-[x] Autenticação segura sem senha (Magic Link/Google).
+O Vercel CLI sobe o Vite e o servidor Python em paralelo e cria um proxy reverso que redireciona `/api/*` → Python e todo o resto → React. Acesse em `http://localhost:3000`.
 
-[x] CRUD completo de ativos da B3 (Ações e FIIs).
-
-[x] Cálculo de Rentabilidade com base no Preço Médio.
-
-[x] Trava de segurança para meta da "Bola de Neve" (cotas que pagam novas cotas).
-
-[x] Geração diária de e-mails de fechamento de mercado.
-
-[x] Injeção de Prompts para análises via IA.
-
-# 🗺️ Roadmap de Evolução e Monetização do Notifinancia
-
-Este documento apresenta o planejamento estratégico e o acompanhamento das fases de evolução, melhorias de UX, expansão de funcionalidades e refatoração arquitetural do **Notifinancia**.
+> ❌ **Não use** `npm run dev` se precisar testar cotações em tempo real — o Vite puro retorna 404 para as rotas `/api`.
 
 ---
 
-## 🚀 Fase 1: Fundação, Legislação e Monetização Inicial
+## 📁 Estrutura Principal
 
-* [x] **Aviso de Venda de FIIs:** Alerta de DARF e tutorial inseridos diretamente na exclusão de ativos com lucro.
-* [x] **Rodapé Profissional & Proteção Jurídica:** Views de Termos, Privacidade, Contato e Disclaimer configuradas de forma responsiva via Hash Routing.
-* [ ] **Monetização:** Injeção do bloco de Ads/parceiros para faturamento institucional.
-
----
-
-## ⚡ Fase 2: UX Fluida, Inteligência de Dados e Resumo
-
-* [x] **UX de Edição Dinâmica:** Skeleton Loading finalizado e Simulador da Bola de Neve calculando dados em tempo real no foco do input.
-* [x] **Dashboard Consolidado & Raio-X Rápido:** Painel superior dinâmico com patrimônio total, variação global, projeção de renda passiva e grade interativa de mini-cards de tickers integrados por popover (`<details>`).
-* [x] **Transparência de Indicadores (DY):** Inserção de ícones informativos ("i") customizados e responsivos nas boxes de DY (tanto no painel consolidado quanto nos cards individuais), detalhando a base de cálculo de 12 meses via Yahoo Finance e lembrando seu caráter estimado/não garantido.
-* [x] **Estética Inspirada no Ecossistema de E-mail:** Customização visual do header com o ícone de envelope estilizado em tons de destaque e sino de notificações em amarelo vivo.
-* [x] **Estabilização do Layout Mobile:** Resolução do vazamento horizontal de tela (`overflow-x`) e aprimoramento da gaveta inferior (`bottom-drawer`), garantindo margem de segurança (`safe-area-inset-bottom`) e respiro visual para o botão flutuante de adição de ativos.
-* [x] **Densidade dos Cards & Tipografia Fluida:** Controle dinâmico para exibir de 1 a 3 cards por linha no desktop e até 2 no celular, com *Container Queries* reescalando tipografia, badges e o grid de 12 meses para evitar quebras em telas estreitas.
-* [x] **Impressão da Carteira:** Ação nos controles do dashboard; impressão sempre usa três cards por linha em layout limpo e otimizado, independente da densidade selecionada na tela.
-* [x] **Gaveta Inferior Compacta e Unificada:** Barra de "+ NOVO ATIVO" redesenhada com altura discreta (64px) para não cobrir informações dos cards; quando aberta, transforma-se em um botão sutil de "FECHAR" perfeitamente integrado à borda superior do formulário.
-* [x] **Detalhes de Dividendos Recolhíveis:** Yield anual permanece visível; renda estimada e grade mensal ficam na aba expansível, com abertura e fechamento sincronizados bidirecionalmente entre todos os ativos.
-* [x] **Atalho para o Prompt de IA:** Botão `IA` nos controles rola suavemente até o prompt; `Pergunte ao Gemini` fica logo abaixo do campo do prompt com envio formatado sob a metodologia Barsi.
-* [ ] **Compartilhamento da Carteira:** Geração de card/resumo visual da carteira para redes sociais.
-
-> Status detalhado da migração e arquitetura em [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md) e [`AGENTS.md`](AGENTS.md).
+```
+NotifinanciaWeb_MVC/
+├── api/                    # Back-end Python (FastAPI + Mangum)
+│   ├── index.py            # Entrypoint da Serverless Function
+│   └── services/
+│       └── marketService.py
+├── src/
+│   ├── components/         # Componentes React (AssetCard, Header, PortfolioSummary…)
+│   ├── context/            # AuthContext (sessão Supabase + Google OAuth)
+│   ├── hooks/              # useAssets (SWR, CRUD, filtros, perfil)
+│   ├── pages/              # Dashboard, Termos, Privacidade, Contato
+│   ├── services/           # asset-service.js (Supabase + API Python)
+│   ├── styles/             # cards.css, style.css
+│   └── utils/              # ticker-dictionary.js, brokers.js
+├── docs/
+│   └── REACT_MIGRATION_PLAN.md
+├── AGENTS.md               # Guia de arquitetura para agentes de IA
+└── vercel.json
+```
 
 ---
 
-## 🔍 Fase 3: Radar de Ativos e Descoberta
-
-* [ ] **Radar de Oportunidades para Visitantes:** Tela inicial para usuários sem login exibindo uma seleção curada de 5 ações e 5 FIIs no mesmo layout dos cards da carteira. Inclui botão de "Adicionar à Carteira" e foco interativo em quanto o usuário precisa gastar para atingir o gatilho da Bola de Neve.
-* [ ] **Busca Direta por Ativo:** Barra de pesquisa instantânea no Radar permitindo consultar qualquer ticker da B3 com o mesmo modelo visual de preview de custos e dividendos.
-* [x] **Dashboard Consolidado & Raio-X Rápido:** Painel superior dinâmico com patrimônio total, variação global, projeção de renda passiva e grade interativa de mini-cards de tickers integrados por popover
-
----
-
-## 📱 Fase 4: Comunicação Avançada e Mobile
-
-* [ ] **Notificações Customizáveis:** Painel para o usuário gerenciar a frequência de e-mails e configurar alertas de variações bruscas.
-* [ ] **Progressive Web App (PWA):** Transformação em aplicativo instalável na tela inicial com suporte a Web Push Notifications.
-
----
-
-## 🏛️ Fase 5: Evolução Arquitetural e Refatoração de Domínio (Clean MVC)
-
-* [ ] **Desacoplamento do AssetController (God Controller):** Divisão das responsabilidades atuais em controllers focados por domínio e domínio de negócio isolado.
-* [ ] **Criação do PortfolioController:** Centralização do orquestrador global responsável por gerenciar o estado da carteira, SWR de preços, ordenações e a composição das views fracionadas.
-* [ ] **Criação do ProfileController:** Isolação de todas as regras relativas ao usuário, gerenciamento de preferências (corretoras, ordenação padrão), notificações e fluxos de autenticação/logout.
-* [x] **Modularização da Camada de Visualização (Views):** Decomposição bem-sucedida da antiga God View (`asset-view.js`) em componentes atômicos e reutilizáveis (`portfolio-header-view.js`, `portfolio-summary-view.js`, `asset-card-view.js`, entre outros), com gerenciamento global de eventos de fechamento de popovers e menus.
-* [ ] **Blindagem e Tratamento de Erros:** Substituição de retornos silenciosos em falhas de banco por contratos estruturados (`{ data, error }`), garantindo rastreabilidade de exceções no front-end.
+> Documentação de arquitetura detalhada: [`AGENTS.md`](AGENTS.md) | Histórico completo da migração: [`docs/REACT_MIGRATION_PLAN.md`](docs/REACT_MIGRATION_PLAN.md)
