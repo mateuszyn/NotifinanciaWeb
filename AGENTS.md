@@ -23,7 +23,7 @@ Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
 | **Página Principal** | `src/pages/Dashboard.jsx` | Orquestra Header, Resumo da Carteira, Grid de Cards, Modais e Drawer |
 | **Card de Ativo Individual** | `src/components/AssetCard.jsx` | Exibe PM, Preço Atual, Variação, DY anual e detalhes recolhíveis de **Dividendos**, **Grid 12 meses rolantes** e **Bola de Neve** |
 | **Painel de Resumo** | `src/components/PortfolioSummary.jsx` | Total investido, variação global, DY médio, grid de tickers com popovers |
-| **Adicionar Ativo (Drawer)** | `src/components/AddAssetDrawer.jsx` | Drawer deslizante, autocomplete por ticker/nome, botão "$ Atual", quantidade estimada e validação |
+| **Adicionar Ativo (Drawer)** | `src/components/AddAssetDrawer.jsx` | Drawer deslizante, autocomplete por ticker/nome, botão "$ Atual", quantidade estimada e validação; no mobile, ticker e P. Médio ficam lado a lado e quantidade ganha uma linha mais larga abaixo |
 | **Editar Ativo (Modal)** | `src/components/UpdateAssetModal.jsx` | Modal de ajuste de quantidade e PM com botões rápidos (+10, +100, etc.) |
 | **Cabeçalho & Filtros** | `src/components/Header.jsx` | Logo, select de ordenação, select de corretora, sino (balão 18h) e menu de usuário |
 | **Estado Global da Carteira** | `src/hooks/useAssets.js` | **Single Source of Truth**: SWR, CRUD (add, update, delete, refresh), filtros e perfil |

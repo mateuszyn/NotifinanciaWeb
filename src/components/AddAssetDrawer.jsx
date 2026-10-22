@@ -174,7 +174,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                     <div className="row g-2 align-items-end">
                         
                         {/* Ticker Input */}
-                        <div className="col-12 col-md-3 form-group mb-2 position-relative" ref={suggestionsRef}>
+                        <div className="col-6 col-md-3 form-group mb-2 position-relative" ref={suggestionsRef}>
                             <label className="small text-secondary fw-bold mb-1">Ticker</label>
                             <input 
                                 type="text" 
@@ -242,7 +242,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                         </div>
 
                         {/* Quantity Input */}
-                        <div className="col-6 col-md-4 mb-2">
+                        <div className="col-8 col-md-4 mb-2">
                             <div className="small text-secondary fw-bold mb-1 d-flex align-items-center gap-2 flex-wrap">
                                 <label htmlFor="asset-quantity" className="mb-0">Quantidade</label>
                                 {snowballInfo && (
@@ -306,7 +306,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                         </div>
 
                         {/* Submit Button */}
-                        <div className="col-12 col-md-2 mb-2">
+                        <div className="col-4 col-md-2 mb-2">
                             <label className="small d-block mb-1" style={{ visibility: 'hidden' }}>Confirmar</label>
                             <button type="submit" className="btn btn-success w-100 fw-bold btn-sm py-2" style={{ height: '40px' }} disabled={isSubmitting}>
                                 ADICIONAR
