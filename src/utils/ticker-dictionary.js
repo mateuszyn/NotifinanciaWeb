@@ -1,3 +1,5 @@
+import { TICKER_NAMES } from './ticker-names.js';
+
 export const TickerDictionary = {
     // Unimos as duas listas que você forneceu (Ações + FIIs)
     list: [
@@ -5,14 +7,31 @@ export const TickerDictionary = {
         "AAGR11", "AAZQ11", "ABCP11", "AEFI11", "AFCR11", "AFHI11", "AFOF11", "AGRX11", "AIEC11", "ALMI11", "ALZC11", "ALZM11", "ALZR11", "AMAZ11", "ANCR11B", "APTO11", "ARCT11", "AROA11", "ARRI11", "ARXD11", "ASMT11", "ATSA11", "ATWN11", "AURB11", "BARI11", "BBFI11B", "BBFO11", "BBGO11", "BBIM11", "BBPO11", "BBRC11", "BCFF11", "BCIA11", "BCRI11", "BDIF11", "BICE11", "BICR11", "BIME11", "BLCA11", "BLCP11", "BLMC11", "BLMG11", "BLMO11", "BLMR11", "BLUR11", "BMII11", "BMLC11", "BNFS11", "BPFF11", "BPLC11", "BPML11", "BPRP11", "BRCO11", "BRCR11", "BREV11", "BRFT11", "BRHT11B", "BRIM11", "BRIP11", "BRLA11", "BROF11", "BTAG11", "BTAL11", "BTCI11", "BTCR11", "BTLG11", "BTRA11", "BTWR11", "BVAR11", "BZEL11", "BZLI11", "CACR11", "CAFE11", "CARE11", "CBOP11", "CCRF11", "CEOC11", "CJCT11", "CNES11", "CPFF11", "CPTR11", "CPTS11", "CRAA11", "CRFF11", "CTXT11", "CVBI11", "CXAG11", "CXCO11", "CXRI11", "CXTL11", "CYCR11", "DAMT11B", "DCRA11", "DEVA11", "DLMT11", "DOVL11B", "DVFF11", "EDGA11", "EGAF11", "ELDO11B", "ERCR11", "EURO11", "FAED11", "FAMB11B", "FCFL11", "FEXC11", "FGAA11", "FIGS11", "FIIB11", "FIIP11B", "FIVN11", "FLCR11", "FLMA11", "FLRP11", "FVPQ11", "GALG11", "GARE11", "GCFF11", "GCRA11", "GCRI11", "GGRC11", "GRWA11", "GSFI11", "GTWR11", "HAAA11", "HABT11", "HBTT11", "HCRA11", "HCRI11", "HCTR11", "HFOF11", "HGAG11", "HGBS11", "HGCR11", "HGFF11", "HGLG11", "HGPO11", "HGRE11", "HGRU11", "HOSI11", "HPDP11", "HREC11", "HSAF11", "HSLG11", "HSML11", "HSRE11", "HTMX11", "HUSC11", "IAAG11", "IBFF11", "IFRA11", "IRDM11", "ITIP11", "ITIT11", "JASC11", "JFLL11", "JGPX11", "JPPA11", "JRDM11", "JSAF11", "JSRE11", "JURO11", "KDIF11", "KFOF11", "KISU11", "KIVO11", "KNCA11", "KNCR11", "KNHY11", "KNIP11", "KNRI11", "KNSC11", "LASC11", "LGCP11", "LSAG11", "LUGG11", "LVBI11", "MALL11", "MAXR11", "MCCI11", "MCHF11", "MCHY11", "MFII11", "MGFF11", "MGLG11", "MINT11", "MORC11", "MORE11", "MXRF11", "NAVT11", "NCHB11", "NCRA11", "NEWL11", "NEWU11", "NSLU11", "NVHO11", "OIAG11", "ONEF11", "OUFF11", "OUJP11", "OULG11", "PABY11", "PATL11", "PEMA11", "PLCA11", "PLCR11", "PORD11", "PQDP11", "PRSV11", "PVBI11", "QAGR11", "QAMI11", "QIRI11", "RBRD11", "RBRF11", "RBRP11", "RBRR11", "RBVA11", "RECR11", "RECT11", "RECX11", "RURA11", "RVBI11", "RZAG11", "RZAK11", "RZTR11", "SADI11", "SARE11", "SDIL11", "SEQR11", "SHPH11", "SNAG11", "SNCI11", "SNFF11", "SNID11", "SNLG11", "SPTW11", "TBOF11", "TEPP11", "TGAR11", "TORD11", "TRNT11", "TRXF11", "TSER11", "URPR11", "VANG11", "VCJR11", "VCRA11", "VCRI11", "VGHF11", "VGIA11", "VGIP11", "VGIR11", "VIFI11", "VILG11", "VINO11", "VISC11", "VIUR11", "VRTA11", "VSLH11", "WHGR11", "WPLZ11", "XBXO11", "XPCA11", "XPCI11", "XPCM11", "XPHT11", "XPID11", "XPIN11", "XPLG11", "XPML11", "XPPR11", "XPSF11", "XTED11", "ZAVI11"
     ],
 
+    defaultVpa: { MXRF11: 10.12, HGLG11: 154.30, XPML11: 112.50, KNCR11: 101.40, KNIP11: 95.80, BTLG11: 99.80, VISC11: 118.20, CPTS11: 9.20, VGHF11: 9.15, GARE11: 9.05, TGAR11: 118.00, XPLG11: 108.50, HGRU11: 125.40, HGBS11: 225.00, IRDM11: 76.50, VGIR11: 9.75, RBRR11: 94.80, TRXF11: 104.20, BCFF11: 9.10, KNSC11: 9.10, PETR4: 32.40, VALE3: 48.20, BBAS3: 28.50, ITUB4: 22.80, BBDC4: 17.10, TAEE11: 23.40, KLBN4: 4.45, CPLE6: 8.90, CXSE3: 11.20, BBSE3: 14.50, WEGE3: 18.20, EGIE3: 22.10 },
+
+    getSuggestedVpa(ticker) { if (!ticker) return null; const norm = ticker.toUpperCase().replace(/\.SA$/i, '').trim(); return this.defaultVpa[norm] || null; },
+
+    getName(ticker) {
+        if (!ticker) return '';
+        const normalizedTicker = ticker.toUpperCase().replace(/\.SA$/i, '').trim();
+        return TICKER_NAMES[normalizedTicker] || '';
+    },
+
     // Função que varre a lista e devolve os matches
     search(query) {
         if (!query || query.length < 2) return [];
-        const upperQuery = query.toUpperCase();
-        
-        // Retorna no máximo 8 resultados para a tela não ficar engasgada
+        const normalize = value => value
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .trim();
+        const normalizedQuery = normalize(query);
+
         return this.list
-            .filter(ticker => ticker.startsWith(upperQuery))
-            .slice(0, 8); 
+            .filter(ticker => (
+                ticker.startsWith(normalizedQuery)
+                || normalize(this.getName(ticker)).includes(normalizedQuery)
+            ))
+            .slice(0, 8);
     }
 };

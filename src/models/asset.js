@@ -1,5 +1,6 @@
 export class Asset {
-    constructor(ticker, quantity, averagePrice) {
+    constructor(ticker, quantity, averagePrice, vpa = null) {
+        this.vpa = vpa !== null && vpa !== undefined && vpa !== '' ? Number(vpa) : null;
         this.ticker = ticker;
         this.quantity = Number(quantity) || 0;
         this.averagePrice = Number(averagePrice) || 0;
@@ -17,15 +18,27 @@ export class Asset {
         this.dataError = false;
     }
 
+    // P/VP calculado dinamicamente em tempo de execução
+    get pvp() {
+        if (this.vpa && this.vpa > 0 && this.currentPrice > 0) {
+            return Number((this.currentPrice / this.vpa).toFixed(2));
+        }
+        return this.priceToBook;
+    }
+
     // Aplica o cache instantâneo enquanto a API não responde
-    applyCache(cachedPrice, cachedChange, cachedYield, cachedPvb = null, cachedPaidMonths = []) {
+    applyCache(cachedPrice, cachedChange, cachedYield, cachedPvp = null, cachedPaidMonths = []) {
         const price = Number(cachedPrice) || 0;
+
+        if (cachedPvp !== null && cachedPvp !== undefined && cachedPvp !== '') {
+            const pvp = Number(cachedPvp);
+            if (Number.isFinite(pvp)) this.priceToBook = pvp;
+        }
         
         if (price > 0) {
             this.currentPrice = price;
             this.dailyChange = Number(cachedChange) || 0;
             this.yieldPct = Number(cachedYield) || 0;
-            this.priceToBook = cachedPvb !== null && cachedPvb !== undefined ? Number(cachedPvb) : null;
             this.paidMonths = Array.isArray(cachedPaidMonths) ? cachedPaidMonths : [];
             
             this.divAnual = this.currentPrice * (this.yieldPct / 100) * this.quantity;

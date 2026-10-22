@@ -22,14 +22,20 @@ export const AssetService = {
         if (error) return [];
         
         return data.map(item => {
-            const asset = new Asset(item.ticker, item.quantity, item.average_price);
+            const asset = new Asset(item.ticker, item.quantity, item.average_price, item.vpa);
             asset.id = item.id;
             
             // CACHE INSTANTÂNEO: Aplica preço, variação, DY, P/VP e os meses pagos salvos
             const cachedPaidMonths = Array.isArray(item.cached_paid_months)
                 ? item.cached_paid_months
                 : item.cached_paid_months?.months || [];
-            asset.applyCache(item.cached_price, item.cached_change, item.cached_yield, null, cachedPaidMonths);
+            asset.applyCache(
+                item.cached_price,
+                item.cached_change,
+                item.cached_yield,
+                item.cached_pvp,
+                cachedPaidMonths
+            );
             
             return asset;
         });
@@ -74,15 +80,19 @@ export const AssetService = {
     // Salva o cache de todos os ativos no banco de dados em background (agora salvando os paidMonths também)
     async saveCacheBackground(assets) {
         try {
-            const promises = assets.map(asset => 
+            const updates = assets.map(asset =>
                 supabase.from('assets').update({
                     cached_price: asset.currentPrice,
                     cached_change: asset.dailyChange,
                     cached_yield: asset.yieldPct,
+                    cached_pvp: asset.pvp,
                     cached_paid_months: asset.paidMonths
                 }).eq('id', asset.id)
             );
-            await Promise.all(promises);
+            const results = await Promise.all(updates);
+            results.forEach(({ error }) => {
+                if (error) console.warn("Erro ao salvar cache de ativo:", error);
+            });
         } catch (error) {
             console.warn("Erro silencioso ao salvar cache no background:", error);
         }
@@ -180,7 +190,8 @@ export const AssetService = {
             .insert([{
                 ticker: asset.ticker.toUpperCase(),
                 quantity: asset.quantity,
-                average_price: asset.averagePrice
+                average_price: asset.averagePrice,
+                vpa: asset.vpa || null
             }]);
         if (error) throw error;
     },
@@ -206,7 +217,8 @@ export const AssetService = {
             .from('assets')
             .update({
                 quantity: data.quantity,
-                average_price: data.averagePrice
+                average_price: data.averagePrice,
+                vpa: data.vpa !== undefined ? data.vpa : null
             })
             .eq('id', id);
         if (error) throw error;

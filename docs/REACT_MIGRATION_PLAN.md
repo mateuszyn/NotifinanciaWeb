@@ -1,8 +1,8 @@
 # Plano de Migração: Vanilla JS (MVC) → React
 
-> Branch de trabalho: `feature/react-migration`  
-> Produção atual: `main` (Vanilla JS — estável e intacto)  
-> Estratégia adotada: **Strangler Fig** — construção incremental lado a lado, sem quebrar a produção.
+> Histórico da migração iniciada na branch `feature/react-migration`.
+> Estado neste repositório: frontend React 19 + Vite e limpeza dos 18 arquivos Vanilla isolados concluídas.
+> O status do deploy/merge em produção precisa ser validado no ambiente Vercel; este documento registra as etapas já feitas e as pendências de deploy.
 
 ---
 
@@ -199,6 +199,24 @@ Os **18 arquivos legados** foram formalmente removidos do repositório:
 - [ ] Confirmar rotas React diretas e refresh em `/termos`, `/privacidade` e `/contato`
 - [ ] Merge da `feature/react-migration` → `main`
 - [ ] Deploy em produção sem downtime
+
+---
+
+## ✅ Sessão 5 — Busca por Nome e Cache P/VP (22/10/2026)
+
+### Busca por Nome Completo no Cadastro
+- [x] `src/utils/ticker-names.js` — Mapa local ticker → nome completo para os ativos suportados.
+- [x] `src/utils/ticker-dictionary.js` — Busca por ticker ou nome, normalizando caixa e diacríticos; mantém a seleção e persistência pelo ticker.
+- [x] `src/components/AddAssetDrawer.jsx` — Sugestões exibidas como `TICKER — Nome`, limitadas a cinco e sem depender do espaço interno da gaveta.
+
+### Cache de P/VP no Supabase
+- [x] `src/models/asset.js` — Aplica P/VP cacheado independentemente de preço; prioriza o cálculo `currentPrice / vpa` quando ambos estão disponíveis.
+- [x] `src/services/asset-service.js` — Lê `cached_pvp` ao hidratar os ativos e o salva junto com preço, variação, DY e meses pagos.
+- [x] `src/hooks/useAssets.js` — O refresh individual persiste também o cache do ativo atualizado, incluindo o fluxo de inclusão de ativo.
+- [x] `api/services/marketService.py` — Mantém consulta em lote ao Fundamentus com cache em memória no backend e retorna `priceToBook` para o frontend.
+- [x] `AGENTS.md` e `README.md` — Atualizados com a busca por nome e o ciclo de cache.
+
+> **Dependência de schema:** a tabela `assets` no Supabase precisa ter a coluna numérica `cached_pvp`. A aplicação não cria essa coluna automaticamente; confirme ou aplique a alteração no schema remoto antes de depender da persistência.
 
 ---
 

@@ -37,9 +37,9 @@ export function useAssets() {
                 if (!isAuthenticated) {
                     // GUEST MODE
                     const demoAssets = [
-                        { id: 1, ticker: 'MXRF11', quantity: 150, averagePrice: 10.20, currentPrice: 10.55, variacaoPm: 3.43, dailyChange: 0.5, yieldPct: 12.32, divMensal: 15.00, divAnual: 180.00, paidMonths: [1,2,3,4,5,6,7,8,9,10,11,12], enrich: () => {} },
-                        { id: 2, ticker: 'PETR4', quantity: 100, averagePrice: 38.50, currentPrice: 36.20, variacaoPm: -5.97, dailyChange: -1.2, yieldPct: 18.00, divMensal: 0, divAnual: 651.00, paidMonths: [5, 8, 11], enrich: () => {} },
-                        { id: 3, ticker: 'KLBN4', quantity: 500, averagePrice: 4.10, currentPrice: 4.35, variacaoPm: 6.09, dailyChange: 1.1, yieldPct: 6.5, divMensal: 0, divAnual: 141.00, paidMonths: [2, 5, 8, 11], enrich: () => {} }
+                        { id: 1, ticker: 'MXRF11', quantity: 150, averagePrice: 10.20, vpa: 10.12, currentPrice: 10.55, variacaoPm: 3.43, dailyChange: 0.5, yieldPct: 12.32, divMensal: 15.00, divAnual: 180.00, paidMonths: [1,2,3,4,5,6,7,8,9,10,11,12], enrich: () => {} },
+                        { id: 2, ticker: 'PETR4', quantity: 100, averagePrice: 38.50, vpa: 32.40, currentPrice: 36.20, variacaoPm: -5.97, dailyChange: -1.2, yieldPct: 18.00, divMensal: 0, divAnual: 651.00, paidMonths: [5, 8, 11], enrich: () => {} },
+                        { id: 3, ticker: 'KLBN4', quantity: 500, averagePrice: 4.10, vpa: 4.45, currentPrice: 4.35, variacaoPm: 6.09, dailyChange: 1.1, yieldPct: 6.5, divMensal: 0, divAnual: 141.00, paidMonths: [2, 5, 8, 11], enrich: () => {} }
                     ];
                     setRawAssets(demoAssets);
                 } else {
@@ -151,6 +151,7 @@ export function useAssets() {
             if (a.id == id) {
                 a.quantity = data.quantity;
                 a.averagePrice = data.averagePrice;
+                if (data.vpa !== undefined) a.vpa = data.vpa ? Number(data.vpa) : null;
                 a.variacaoPm = a.averagePrice > 0 ? ((a.currentPrice - a.averagePrice) / a.averagePrice) * 100 : 0;
                 a.totalValue = a.currentPrice * a.quantity;
                 a.divAnual = a.currentPrice * (a.yieldPct / 100) * a.quantity;
@@ -182,6 +183,7 @@ export function useAssets() {
                 if (index !== -1) {
                     updated[index].enrich(marketData);
                     updated[index].dataError = false; // reseta erro se houver
+                    AssetService.saveCacheBackground([updated[index]]);
                 }
                 return updated;
             });

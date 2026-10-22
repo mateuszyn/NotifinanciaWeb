@@ -77,7 +77,13 @@
 
 .drawer-content {
     padding: 6px 16px 24px 16px;
-    overflow-x: hidden; /* Corta vazamentos laterais causados por colunas ou rows do Bootstrap */
+    overflow-x: clip; /* Evita vazamento horizontal sem cortar a lista suspensa vertical. */
+    overflow-y: visible;
+}
+
+.ticker-suggestion-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .form-control-sm {
@@ -91,6 +97,140 @@
     background-color: #1a1d20;
     border: 1px solid #333;
     color: #adb5bd;
+}
+
+.quantity-entry-box {
+    overflow: visible;
+    border: 1px solid #495057;
+    border-radius: 0.25rem;
+    background-color: #000;
+}
+
+.quantity-input-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.quantity-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    padding-right: 4px;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.quantity-estimate {
+    flex: 0 0 auto;
+    padding: 0 4px;
+    color: #adb5bd;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.quantity-stepper {
+    display: flex;
+    flex: 0 0 24px;
+    flex-direction: column;
+    align-self: stretch;
+    border-left: 1px solid #333;
+}
+
+.quantity-stepper button {
+    display: flex;
+    flex: 1 1 50%;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: #1a1d20;
+    color: #adb5bd;
+    font-size: 0.55rem;
+    line-height: 1;
+}
+
+.quantity-stepper button + button {
+    border-top: 1px solid #333;
+}
+
+.quantity-stepper button:hover {
+    background: #2c3034;
+    color: #fff;
+}
+
+.quantity-quick-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-self: stretch;
+    align-items: stretch;
+    gap: 1px;
+    border-left: 1px solid #333;
+}
+
+.quantity-quick-controls .btn {
+    flex: 0 0 auto;
+    min-width: 32px;
+    padding: 2px 4px;
+    border: 0 !important;
+    border-radius: 0;
+    background: #1a1d20;
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+
+.quantity-quick-controls .btn + .btn {
+    border-left: 1px solid #333 !important;
+}
+
+.snowball-info-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.snowball-info-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.snowball-info-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #adb5bd;
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.snowball-info-popover {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 6px);
+    z-index: 1060;
+    width: min(240px, calc(100vw - 40px));
+    padding: 8px 10px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    background: #212529;
+    color: #cbd5e1;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    font-size: 0.72rem;
+    font-weight: 400;
+    line-height: 1.4;
 }
 
 @media (max-width: 991px) {

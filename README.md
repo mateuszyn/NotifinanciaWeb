@@ -15,7 +15,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - **Migração Arquitetural Completa (React 19):** Portado de um monólito MVC Vanilla JS para um SPA moderno em React 19 com Vite, aplicando o padrão *Strangler Fig* — o sistema permaneceu em produção durante toda a transição. Resultou na eliminação de 18 arquivos legados, incluindo controllers, views e serviços da camada antiga. A lógica do *God Controller* foi distribuída em Custom Hooks (`useAssets`) e componentes atômicos.
 - **Arquitetura Serverless Híbrida:** SPA React integrado a um back-end Python (FastAPI + Mangum) via Serverless Functions da Vercel. Elimina problemas de CORS, garante escalabilidade automática e isola completamente o front-end do back-end — cada camada pode ser deployada de forma independente.
 - **Design Fluido com Container Queries:** Cards de ativos que escalam tipografia, badges e espaçamentos dinamicamente via unidades `cqi` conforme a largura individual de cada card, garantindo legibilidade perfeita em qualquer densidade — de 1 coluna no mobile até 3 colunas no print.
-- **Resiliência no Web Scraping:** Mecanismos de *fallback* e cálculos de proventos via Yahoo Finance Chart API para contornar variações de disponibilidade da B3.
+- **Resiliência de Dados de Mercado:** Cotações, DY e histórico de proventos via Yahoo Finance Chart API; P/VP consultado em lote no Fundamentus e mantido em cache no backend e no Supabase para exibição imediata.
 - **Integração com IA (Smart Prompt & Google Gemini):** O sistema compila um snapshot financeiro da carteira (ativos, preço médio, variação diária, status da Bola de Neve) e gera um prompt formatado sob a metodologia Barsi para análise tática instantânea com atalho direto para o Google Gemini.
 - **CRON Jobs e Mensageria:** *Edge Functions* (Deno/Supabase) varrem o banco, compilam o fechamento de mercado e disparam relatórios transacionais via Resend API.
 - **Guest Mode:** Visitantes não autenticados visualizam ativos simulados com dados reais de mercado, tornando o app totalmente navegável sem cadastro.
@@ -55,6 +55,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - Histórico de dividendos dos últimos 12 meses rolantes por ativo
 - Dividend Yield anual e mensal (projeção estimada, com disclaimer)
 - Simulador da **Bola de Neve**: quantas cotas comprar para que os dividendos paguem uma nova cota por mês — cálculo desacoplado da quantidade atual do investidor
+- Indicador **P/VP**: cálculo dinâmico baseado no VPA salvo no Supabase e na cotação atual; quando não há VPA utilizável, usa o P/VP retornado pelo serviço de mercado. O valor fica persistido em `cached_pvp` para carregamento imediato.
 
 **Painel Consolidado (Raio-X)**
 - Patrimônio atual, valor investido, variação global e DY anual/mensal da carteira
@@ -70,7 +71,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - Detalhes de dividendos recolhíveis com abertura/fechamento sincronizados entre todos os cards
 - Controle de densidade dos cards (1 a 3 colunas no desktop, até 2 no mobile) com Container Queries
 - Impressão/exportação da carteira: grade fixa de 3 cards por linha em layout limpo, independente da densidade da tela
-- Gaveta inferior compacta para cadastro de novos ativos com autocomplete de tickers da B3 (offline, sem latência)
+- Gaveta inferior compacta para cadastro de novos ativos com autocomplete offline por ticker ou nome completo (até cinco sugestões; busca sem diferenciar acentos)
 - Tipografia e ações dos cards redimensionadas conforme a largura individual do card
 - Smart Prompt de IA com snapshot da carteira e metodologia Barsi; botão `IA` nos controles rola até o prompt; link direto para o Google Gemini logo abaixo
 
@@ -87,7 +88,6 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - [ ] **Monetização (AdSense):** Injeção do bloco de Ads/parceiros para faturamento institucional
 - [ ] **Radar de Oportunidades:** Tela inicial pública (sem login obrigatório) exibindo seleção curada de ações e FIIs no mesmo layout dos cards, com botão "Adicionar à Carteira" e foco na Bola de Neve
 - [ ] **Busca Direta por Ativo:** Barra de pesquisa instantânea no Radar para consultar qualquer ticker da B3 com preview de custos e dividendos
-- [ ] **P/VP nos Cards:** Integração do indicador Preço/Valor Patrimonial (P/VP) via Yahoo Finance para análise de valuation em ações e FIIs — métrica crítica para a decisão de compra na metodologia Barsi
 - [ ] **Zoom / Escala Nativa Mobile:** Controle de escala de visualização para o usuário ver mais ativos simultaneamente no celular sem depender do zoom do navegador
 - [ ] **Notificações Customizáveis:** Painel para gerenciar frequência de e-mails e alertas de variações bruscas
 - [ ] **Progressive Web App (PWA):** App instalável na tela inicial com Web Push Notifications
@@ -109,6 +109,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - [x] Detalhes de dividendos recolhíveis com abertura/fechamento sincronizados
 - [x] Smart Prompt de IA com snapshot da carteira e link para o Google Gemini
 - [x] Navegação rápida no painel: toque/clique → scroll até o card; segurar → popover de variação
+- [x] Indicador P/VP dinâmico por cota integrado aos cards e ao fluxo de cadastro/edição com persistência de VPA no Supabase
 
 **Fase 3 — Migração Completa para React 19**
 - [x] Portagem do monólito MVC Vanilla JS para SPA React 19 + Vite (padrão *Strangler Fig*)
@@ -185,7 +186,7 @@ NotifinanciaWeb_MVC/
 │   ├── pages/              # Dashboard, Termos, Privacidade, Contato
 │   ├── services/           # asset-service.js (Supabase + API Python)
 │   ├── styles/             # cards.css, style.css
-│   └── utils/              # ticker-dictionary.js, brokers.js
+│   └── utils/              # ticker-dictionary.js, ticker-names.js, brokers.js
 ├── docs/
 │   └── REACT_MIGRATION_PLAN.md
 ├── AGENTS.md               # Guia de arquitetura para agentes de IA

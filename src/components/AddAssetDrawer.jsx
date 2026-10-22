@@ -14,6 +14,14 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [validatedTickers, setValidatedTickers] = useState(new Set());
     const suggestionsRef = useRef(null);
+    const snowballInfoRef = useRef(null);
+    const [isSnowballInfoOpen, setIsSnowballInfoOpen] = useState(false);
+
+    // Recalcula o custo da bola de neve sempre que mudar o P. Médio ou o yield detectado
+    const priceNum = parseFloat(averagePrice) || 0;
+    const snowballCost = (snowballInfo && priceNum > 0) ? (snowballInfo * priceNum).toFixed(2) : null;
+    const quantityNum = parseFloat(quantity) || 0;
+    const currentTotalApprox = (quantityNum > 0 && priceNum > 0) ? (quantityNum * priceNum).toFixed(2) : null;
 
     // Filter suggestions when ticker changes
     useEffect(() => {
@@ -25,7 +33,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
         }
 
         if (query.length >= 2) {
-            const results = TickerDictionary.search(query);
+            const results = TickerDictionary.search(query).slice(0, 5);
             setSuggestions(results);
         } else {
             setSuggestions([]);
@@ -38,9 +46,12 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
             if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
                 setSuggestions([]);
             }
+            if (snowballInfoRef.current && !snowballInfoRef.current.contains(e.target)) {
+                setIsSnowballInfoOpen(false);
+            }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
     const toggleDrawer = () => setIsOpen(!isOpen);
@@ -48,7 +59,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
     const handleQuickQty = (delta) => {
         setQuantity(prev => {
             const current = parseFloat(prev) || 0;
-            return (current + delta).toString();
+            return Math.max(0, current + delta).toString();
         });
     };
 
@@ -163,7 +174,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                     <div className="row g-2 align-items-end">
                         
                         {/* Ticker Input */}
-                        <div className="form-group mb-3 position-relative" ref={suggestionsRef}>
+                        <div className="col-12 col-md-3 form-group mb-2 position-relative" ref={suggestionsRef}>
                             <label className="small text-secondary fw-bold mb-1">Ticker</label>
                             <input 
                                 type="text" 
@@ -174,11 +185,23 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                                 onChange={(e) => setTicker(e.target.value)}
                             />
                             {suggestions.length > 0 && (
-                                <ul className="dropdown-menu w-100 shadow-lg bg-dark border-secondary" style={{ display: 'block', position: 'absolute', top: '100%', zIndex: 1000 }}>
+                                <ul
+                                    className="dropdown-menu w-100 shadow-lg bg-dark border-secondary"
+                                    style={{
+                                        display: 'block',
+                                        position: 'absolute',
+                                        bottom: '100%',
+                                        top: 'auto',
+                                        marginBottom: '6px',
+                                        zIndex: 1050,
+                                        maxHeight: '220px',
+                                        overflowY: 'auto'
+                                    }}
+                                >
                                     {suggestions.map((s, idx) => (
                                         <li key={idx}>
                                             <a 
-                                                className="dropdown-item text-white border-bottom border-secondary py-2 cursor-pointer hover-bg-light" 
+                                                className="dropdown-item ticker-suggestion-item text-white border-bottom border-secondary py-2 cursor-pointer hover-bg-light"
                                                 href="#"
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -186,7 +209,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                                                     setSuggestions([]);
                                                 }}
                                             >
-                                                {s}
+                                                {s}{TickerDictionary.getName(s) ? ` — ${TickerDictionary.getName(s)}` : ''}
                                             </a>
                                         </li>
                                     ))}
@@ -194,8 +217,8 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                             )}
                         </div>
 
-                        {/* Average Price Input (Swapped) */}
-                        <div className="col-8 col-md-3">
+                        {/* Average Price Input */}
+                        <div className="col-6 col-md-3 mb-2">
                             <label className="small text-secondary fw-bold mb-1">P. Médio (R$)</label>
                             <div className="input-group input-group-sm">
                                 <input 
@@ -218,34 +241,72 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                             </div>
                         </div>
 
-                        {/* Quantity Input (Swapped) */}
-                        <div className="col-8 col-md-4">
-                            <label className="small text-secondary fw-bold mb-1 d-flex align-items-center gap-2">
-                                Quantidade
+                        {/* Quantity Input */}
+                        <div className="col-6 col-md-4 mb-2">
+                            <div className="small text-secondary fw-bold mb-1 d-flex align-items-center gap-2 flex-wrap">
+                                <label htmlFor="asset-quantity" className="mb-0">Quantidade</label>
                                 {snowballInfo && (
-                                    <span style={{ color: '#8fe3a7', fontSize: '0.85em', marginLeft: '5px' }}>
-                                        (Compre {snowballInfo} para a bola de neve)
+                                    <span className="snowball-info-message">
+                                        <span className="snowball-info-wrapper" ref={snowballInfoRef}>
+                                            <button
+                                                type="button"
+                                                className="snowball-info-button"
+                                                aria-label="Informações sobre a meta Bola de Neve"
+                                                aria-expanded={isSnowballInfoOpen}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    setIsSnowballInfoOpen(open => !open);
+                                                }}
+                                            >
+                                                <i className="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            </button>
+                                            {isSnowballInfoOpen && (
+                                                <span className="snowball-info-popover" role="tooltip">
+                                                    Meta estimada de cotas para receber proventos suficientes para comprar aproximadamente uma nova cota por mês. O cálculo usa o DY disponível e não garante rendimentos futuros.
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span style={{ color: '#8fe3a7', fontSize: '0.82em' }}>
+                                            Bola de Neve: {snowballInfo} cotas {snowballCost && `≈ R$ ${snowballCost}`}
+                                        </span>
                                     </span>
                                 )}
-                            </label>
-                            <div className="input-group input-group-sm">
-                                <input 
-                                    type="number" 
-                                    className="form-control bg-black text-white border-secondary" 
-                                    placeholder="0" 
-                                    step="any" 
-                                    style={{ flex: 1.5 }}
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(e.target.value)}
-                                />
-                                <button type="button" className="btn btn-dark border-secondary px-2" onClick={() => handleQuickQty(1)}>+1</button>
-                                <button type="button" className="btn btn-dark border-secondary px-2" onClick={() => handleQuickQty(10)}>+10</button>
-                                <button type="button" className="btn btn-dark border-secondary px-2" onClick={() => handleQuickQty(100)}>+100</button>
+                            </div>
+                            <div className="quantity-entry-box">
+                                <div className="quantity-input-row">
+                                    <input
+                                        id="asset-quantity"
+                                        type="number"
+                                        className="form-control bg-black text-white border-secondary quantity-input"
+                                        placeholder="0"
+                                        step="any"
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(e.target.value)}
+                                    />
+                                    {currentTotalApprox && (
+                                        <span className="quantity-estimate" aria-live="polite">
+                                            ≈ R$ {currentTotalApprox}
+                                        </span>
+                                    )}
+                                    <div className="quantity-stepper">
+                                        <button type="button" aria-label="Aumentar uma cota" onClick={() => handleQuickQty(1)}>
+                                            <i className="bi bi-chevron-up" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" aria-label="Diminuir uma cota" onClick={() => handleQuickQty(-1)}>
+                                            <i className="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    <div className="quantity-quick-controls">
+                                        <button type="button" className="btn btn-dark border-secondary" onClick={() => handleQuickQty(10)}>+10</button>
+                                        <button type="button" className="btn btn-dark border-secondary" onClick={() => handleQuickQty(100)}>+100</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Submit Button */}
-                        <div className="col-4 col-md-2">
+                        <div className="col-12 col-md-2 mb-2">
                             <label className="small d-block mb-1" style={{ visibility: 'hidden' }}>Confirmar</label>
                             <button type="submit" className="btn btn-success w-100 fw-bold btn-sm py-2" style={{ height: '40px' }} disabled={isSubmitting}>
                                 ADICIONAR

@@ -3,6 +3,9 @@ import { BROKERS } from '../utils/brokers.js';
 
 export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, onRetry }) {
     const [isDyInfoOpen, setIsDyInfoOpen] = React.useState(false);
+    const [isPvpInfoOpen, setIsPvpInfoOpen] = React.useState(false);
+    const pvpInfoRef = React.useRef(null);
+
     const profitPct = asset.variacaoPm || 0;
     const dailyChange = asset.dailyChange || 0;
     const profitTextClass = profitPct >= 0 ? 'text-profit-pos' : 'text-profit-neg';
@@ -22,6 +25,17 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     const currentPrice = Number(asset.currentPrice) || 0;
     const quantity = Number(asset.quantity) || 0;
     const paidMonths = asset.paidMonths || asset.paid_months || [];
+
+    React.useEffect(() => {
+        const closePvpInfoOnOutsideClick = (event) => {
+            if (pvpInfoRef.current && !pvpInfoRef.current.contains(event.target)) {
+                setIsPvpInfoOpen(false);
+            }
+        };
+
+        document.addEventListener('click', closePvpInfoOnOutsideClick);
+        return () => document.removeEventListener('click', closePvpInfoOnOutsideClick);
+    }, []);
 
     // Cálculo da Bola de Neve (Magic Number: quantas cotas pagam 1 nova cota/mês)
     const rendaMensalPorCota = currentPrice > 0 && yieldPct > 0 ? (currentPrice * (yieldPct / 100)) / 12 : 0;
@@ -59,6 +73,43 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         });
     }
 
+    // Régua Inteligente de Cores de P/VP: Diferenciando Ações de FIIs
+    const isFii = ticker.toUpperCase().replace(/\.SA$/i, '').endsWith('11');
+    const pvpValue = asset.pvp !== undefined && asset.pvp !== null ? Number(asset.pvp) : null;
+    let pvpColorClass = 'text-secondary border-secondary';
+    let pvpBadgeBg = 'rgba(255, 255, 255, 0.05)';
+
+    if (pvpValue !== null && pvpValue > 0) {
+        if (isFii) {
+            // REGRA FIIs: Ativo físico/imóveis. 1.00 é paridade estrita.
+            if (pvpValue < 1.00) {
+                pvpColorClass = 'text-success border-success';
+                pvpBadgeBg = 'rgba(40, 167, 69, 0.12)';
+            } else if (pvpValue <= 1.05) {
+                pvpColorClass = 'text-info border-info';
+                pvpBadgeBg = 'rgba(13, 202, 240, 0.12)';
+            } else {
+                pvpColorClass = 'text-warning border-warning';
+                pvpBadgeBg = 'rgba(255, 193, 7, 0.12)';
+            }
+        } else {
+            // REGRA AÇÕES: Empresas acumulam caixa, marcas e crescimento. P/VP de 1.0 a 2.5 é muito comum e saudável.
+            if (pvpValue < 1.00) {
+                pvpColorClass = 'text-success border-success'; // Abaixo do valor contábil dos ativos
+                pvpBadgeBg = 'rgba(40, 167, 69, 0.12)';
+            } else if (pvpValue <= 2.20) {
+                pvpColorClass = 'text-info border-info'; // Faixa saudável para empresas com dividendos (Bancos, Elétricas, Celulose)
+                pvpBadgeBg = 'rgba(13, 202, 240, 0.12)';
+            } else if (pvpValue <= 3.50) {
+                pvpColorClass = 'text-light border-secondary'; // Múltiplo moderado de crescimento
+                pvpBadgeBg = 'rgba(255, 255, 255, 0.08)';
+            } else {
+                pvpColorClass = 'text-warning border-warning'; // Ágio elevado sobre o patrimônio
+                pvpBadgeBg = 'rgba(255, 193, 7, 0.12)';
+            }
+        }
+    }
+
     const cardId = `asset-card-${ticker.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     return (
@@ -94,14 +145,81 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                     </div>
                 </div>
 
-                <div className="row border-top border-bottom border-secondary py-2 mb-3">
-                    <div className="col-6 border-end border-secondary">
+                <div className="row border-top border-bottom border-secondary py-2 mb-3 text-center">
+                    <div className="col-4 border-end border-secondary px-1">
                         <p className="price-label">P. Médio</p>
-                        <p className="price-value">R$ {(asset.averagePrice || 0).toFixed(2)} <span className={`${profitTextClass} small`}>({profitPct.toFixed(2)}%)</span></p>
+                        <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
+                        <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                            ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
+                        </span>
                     </div>
-                    <div className="col-6 ps-3">
+                    <div className="col-4 border-end border-secondary px-1">
                         <p className="price-label">Preço Atual</p>
-                        <p className="price-value">R$ {currentPrice.toFixed(2)} <span className={`${dailyTextClass} small`}>({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)</span></p>
+                        <p className="price-value mb-0">R$ {currentPrice.toFixed(2)}</p>
+                        <span className={`${dailyTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                            ({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)
+                        </span>
+                    </div>
+                    <div className="col-4 px-1 d-flex flex-column justify-content-center align-items-center position-relative">
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                            <span className="price-label mb-0">P/VP</span>
+                            <div className="asset-pvp-info" ref={pvpInfoRef}>
+                                <button
+                                    type="button"
+                                    className="btn btn-link p-0 text-secondary"
+                                    style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                                    aria-label="Informações sobre P/VP"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsPvpInfoOpen(prev => !prev);
+                                    }}
+                                >
+                                    <i className="bi bi-info-circle-fill"></i>
+                                </button>
+                                {isPvpInfoOpen && (
+                                    <div
+                                        className="position-absolute text-start p-2 shadow-lg"
+                                        style={{
+                                            bottom: '100%',
+                                            right: '0',
+                                            width: '210px',
+                                            backgroundColor: '#212529',
+                                            border: '1px solid #555',
+                                            borderRadius: '8px',
+                                            fontSize: '0.72rem',
+                                            color: '#cbd5e1',
+                                            zIndex: 1250,
+                                            marginBottom: '6px'
+                                        }}
+                                    >
+                                        <strong>Preço / Valor Patrimonial:</strong>
+                                        <p className="mb-1 mt-1">Mede quanto o mercado paga sobre o patrimônio contábil do ativo:</p>
+                                        <p className="mb-0" style={{ color: '#8fe3a7' }}>• <strong>&lt; 1.00:</strong> Desconto patrimonial</p>
+                                        <p className="mb-0" style={{ color: '#6edff6' }}>• <strong>1.00 - {isFii ? '1.05' : '2.20'}:</strong> Preço justo / paridade</p>
+                                        <p className="mb-0" style={{ color: '#ffd56b' }}>• <strong>&gt; {isFii ? '1.05' : '2.20'}:</strong> Ágio sobre o patrimônio</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="mt-1">
+                            {pvpValue !== null && pvpValue > 0 ? (
+                                <span 
+                                    className={`badge border ${pvpColorClass}`} 
+                                    style={{ backgroundColor: pvpBadgeBg, fontSize: '0.78rem', fontWeight: 'bold', padding: '4px 6px' }}
+                                    title={`P/VP: ${pvpValue.toFixed(2)}`}
+                                >
+                                    {pvpValue.toFixed(2)}
+                                </span>
+                            ) : (
+                                <span 
+                                    className="text-secondary" 
+                                    style={{ fontSize: '0.85rem', fontWeight: 'bold' }}
+                                    title="P/VP indisponível no momento"
+                                >
+                                    —
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 

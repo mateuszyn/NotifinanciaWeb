@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
 import logging
+import re
+import time
 from typing import Any, Dict, List, Optional
 
 import requests
+import urllib3
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +15,69 @@ DEFAULT_HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json,text/plain,*/*",
-    "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
-    "Connection": "keep-alive",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
 }
+
+# Cache em memória para P/VP (TTL de 3 horas para máxima velocidade e 0 overhead)
+_PVP_CACHE: Dict[str, float] = {}
+_LAST_PVP_FETCH: float = 0.0
+
+def _refresh_pvp_cache():
+    global _PVP_CACHE, _LAST_PVP_FETCH
+    now = time.time()
+    # Se o cache tiver menos de 3 horas, reutiliza instantaneamente
+    if _PVP_CACHE and (now - _LAST_PVP_FETCH < 10800):
+        return
+
+    try:
+        session = requests.Session()
+        session.headers.update(DEFAULT_HEADERS)
+        urllib3.disable_warnings()
+
+        new_cache = {}
+
+        # 1. Puxa P/VP de todos os FIIs da B3 em 1 única requisição
+        try:
+            r_fii = session.get("https://www.fundamentus.com.br/fii_resultado.php", verify=False, timeout=6)
+            if r_fii.status_code == 200:
+                rows = re.findall(r'<tr[^>]*>(.*?)</tr>', r_fii.text, re.DOTALL)
+                for row in rows:
+                    cols = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)]
+                    if len(cols) >= 6:
+                        ticker = cols[0].upper().strip()
+                        try:
+                            val = float(cols[5].replace('.', '').replace(',', '.'))
+                            new_cache[ticker] = val
+                        except ValueError:
+                            pass
+        except Exception as e:
+            logger.warning("Falha ao atualizar P/VP de FIIs: %s", e)
+
+        # 2. Puxa P/VP de todas as Ações da B3 em 1 única requisição
+        try:
+            r_acao = session.get("https://www.fundamentus.com.br/resultado.php", verify=False, timeout=6)
+            if r_acao.status_code == 200:
+                rows = re.findall(r'<tr[^>]*>(.*?)</tr>', r_acao.text, re.DOTALL)
+                for row in rows:
+                    cols = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)]
+                    if len(cols) >= 4:
+                        ticker = cols[0].upper().strip()
+                        try:
+                            val = float(cols[3].replace('.', '').replace(',', '.'))
+                            new_cache[ticker] = val
+                        except ValueError:
+                            pass
+        except Exception as e:
+            logger.warning("Falha ao atualizar P/VP de Ações: %s", e)
+
+        if new_cache:
+            _PVP_CACHE.update(new_cache)
+            _LAST_PVP_FETCH = now
+            logger.info("Cache de P/VP atualizado com sucesso. Total ativos: %d", len(_PVP_CACHE))
+
+    except Exception as exc:
+        logger.error("Erro ao sincronizar P/VP geral: %s", exc)
 
 def _should_append_sa(symbol: str) -> bool:
     sym = symbol.upper()
@@ -35,44 +97,57 @@ def _build_query_symbol(original: str) -> str:
     return original
 
 def _fetch_chart_payload(session: requests.Session, query_symbol: str) -> Optional[Dict[str, Any]]:
-    # Ampliado para range=2y para capturar o histórico completo de proventos sem falhas de corte de data
-    url = f"https://query2.finance.yahoo.com/v8/finance/chart/{query_symbol}?interval=1d&range=2y&events=div"
-    try:
-        response = session.get(url, headers=DEFAULT_HEADERS, timeout=15)
-        response.raise_for_status()
-        payload = response.json()
-        chart = payload.get("chart") or {}
-        result = (chart.get("result") or [])
-        if not result:
-            return None
-        return result[0]
-    except Exception as exc:
-        logger.warning("Falha ao consultar Yahoo Finance Chart para %s: %s", query_symbol, exc)
-        return None
+    endpoints = [
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{query_symbol}?interval=1d&range=2y&events=div",
+        f"https://query2.finance.yahoo.com/v8/finance/chart/{query_symbol}?interval=1d&range=2y&events=div"
+    ]
+    
+    for url in endpoints:
+        try:
+            response = session.get(url, headers=DEFAULT_HEADERS, timeout=6)
+            response.raise_for_status()
+            payload = response.json()
+            chart = payload.get("chart") or {}
+            result = (chart.get("result") or [])
+            if result:
+                return result[0]
+        except Exception:
+            try:
+                urllib3.disable_warnings()
+                response = session.get(url, headers=DEFAULT_HEADERS, timeout=6, verify=False)
+                if response.status_code == 200:
+                    payload = response.json()
+                    chart = payload.get("chart") or {}
+                    result = (chart.get("result") or [])
+                    if result:
+                        return result[0]
+            except Exception as exc:
+                logger.warning("Falha ao consultar Yahoo Finance Chart para %s: %s", query_symbol, exc)
+                
+    return None
 
 def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
     if not symbols:
         return {}
 
+    # Atualiza em lote o P/VP de todos os ativos da bolsa
+    _refresh_pvp_cache()
+
     mapping = {symbol: _build_query_symbol(symbol) for symbol in symbols}
     session = requests.Session()
     session.headers.update(DEFAULT_HEADERS)
 
-    try:
-        session.get("https://fc.yahoo.com", timeout=5)
-    except Exception:
-        pass
-
     results: Dict[str, Dict[str, Any]] = {}
-
     now_timestamp = int(datetime.now(timezone.utc).timestamp())
     one_year_ago_timestamp = now_timestamp - (365 * 24 * 60 * 60)
 
     for original_symbol, query_symbol in mapping.items():
+        clean_base_ticker = original_symbol.upper().replace(".SA", "").strip()
         price: Optional[float] = None
         change_percent: Optional[float] = None
         yieldpct = 0.0
         paid_months: List[int] = []
+        pvp_value: Optional[float] = _PVP_CACHE.get(clean_base_ticker)
 
         try:
             result = _fetch_chart_payload(session, query_symbol)
@@ -83,6 +158,7 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
                     "changePercent": None,
                     "yieldpct": 0.0,
                     "paidMonths": [],
+                    "priceToBook": pvp_value,
                 }
                 continue
 
@@ -98,43 +174,36 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
             valid_closes = [c for c in closes if c is not None]
 
             if price is not None and len(valid_closes) >= 2:
-                previous_close = float(valid_closes[-2])
-                if previous_close > 0:
-                    change_percent = round(((price - previous_close) / previous_close) * 100, 2)
-                    if abs(change_percent) > 50:
-                        change_percent = 0.0
-            else:
-                change_percent = 0.0
+                previous_close = valid_closes[-2]
+                if previous_close:
+                    change_percent = ((price - previous_close) / previous_close) * 100
+            elif meta.get("chartPreviousClose") and price is not None:
+                prev = float(meta["chartPreviousClose"])
+                change_percent = ((price - prev) / prev) * 100
 
-            # Processamento de Dividendos (Janela de 2 anos para os meses, 1 ano estrito para o Yield)
+            # Proventos (dividendos)
             events = result.get("events") or {}
             dividends = events.get("dividends") or {}
-            total_dividends = 0.0
-            months_set = set()
 
-            if isinstance(dividends, dict):
-                for dividend in dividends.values():
-                    if not isinstance(dividend, dict):
-                        continue
-                    amount = dividend.get("amount")
-                    date_ts = dividend.get("date")
+            total_dividends_1y = 0.0
+            paid_months_set = set()
+
+            for ts_str, div_data in dividends.items():
+                try:
+                    ts = int(ts_str)
+                    amount = float(div_data.get("amount", 0.0))
                     
-                    if date_ts is not None:
-                        try:
-                            dt = datetime.fromtimestamp(int(date_ts), tz=timezone.utc)
-                            # Mapeia o mês no histórico de 2 anos para preencher o grid corretamente
-                            months_set.add(dt.month)
-                            
-                            # Soma para o Yield apenas o que está nos últimos 365 dias
-                            if int(date_ts) >= one_year_ago_timestamp and amount is not None:
-                                total_dividends += float(amount)
-                        except (TypeError, ValueError):
-                            pass
+                    if ts >= one_year_ago_timestamp:
+                        total_dividends_1y += amount
+                        div_date = datetime.fromtimestamp(ts, timezone.utc)
+                        paid_months_set.add(div_date.month)
+                except (ValueError, TypeError):
+                    continue
 
-            paid_months = sorted(list(months_set))
+            if price and price > 0:
+                yieldpct = (total_dividends_1y / price) * 100
 
-            if price is not None and price > 0 and total_dividends > 0:
-                yieldpct = round((total_dividends / price) * 100, 2)
+            paid_months = sorted(list(paid_months_set))
 
             results[original_symbol] = {
                 "ticker": original_symbol,
@@ -142,16 +211,18 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
                 "changePercent": change_percent,
                 "yieldpct": yieldpct,
                 "paidMonths": paid_months,
+                "priceToBook": pvp_value,
             }
 
         except Exception as exc:
-            logger.warning("Erro ao montar dados do ticker %s: %s", query_symbol, exc)
+            logger.error("Erro inesperado ao processar %s: %s", original_symbol, exc)
             results[original_symbol] = {
                 "ticker": original_symbol,
                 "price": None,
                 "changePercent": None,
                 "yieldpct": 0.0,
                 "paidMonths": [],
+                "priceToBook": pvp_value,
             }
 
     return results
