@@ -169,7 +169,20 @@ export default function Dashboard() {
                 {!loading && (
                     <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
                         <div className="portfolio-view-actions">
-                            <button type="button" className="btn btn-outline-light" onClick={() => window.print()}>
+                            <button type="button" className="btn btn-outline-light" onClick={() => {
+                                const restoreScroll = () => {
+                                    document.body.style.overflow = '';
+                                    document.body.style.overflowY = '';
+                                    document.documentElement.style.overflow = '';
+                                    document.documentElement.style.overflowY = '';
+                                    document.body.style.position = '';
+                                    document.body.style.top = '';
+                                    document.body.style.width = '';
+                                    window.removeEventListener('afterprint', restoreScroll);
+                                };
+                                window.addEventListener('afterprint', restoreScroll);
+                                window.print();
+                            }}>
                                 <i className="bi bi-printer me-2" aria-hidden="true"></i>
                                 Print
                             </button>
