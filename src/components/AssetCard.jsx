@@ -4,7 +4,9 @@ import { BROKERS } from '../utils/brokers.js';
 export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, onRetry }) {
     const [isDyInfoOpen, setIsDyInfoOpen] = React.useState(false);
     const [isPvpInfoOpen, setIsPvpInfoOpen] = React.useState(false);
+    const [activeMonthKey, setActiveMonthKey] = React.useState(null);
     const pvpInfoRef = React.useRef(null);
+    const monthsContainerRef = React.useRef(null);
 
     const profitPct = asset.variacaoPm || 0;
     const dailyChange = asset.dailyChange || 0;
@@ -27,14 +29,17 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     const paidMonths = asset.paidMonths || asset.paid_months || [];
 
     React.useEffect(() => {
-        const closePvpInfoOnOutsideClick = (event) => {
+        const handleOutsideClick = (event) => {
             if (pvpInfoRef.current && !pvpInfoRef.current.contains(event.target)) {
                 setIsPvpInfoOpen(false);
             }
+            if (monthsContainerRef.current && !monthsContainerRef.current.contains(event.target)) {
+                setActiveMonthKey(null);
+            }
         };
 
-        document.addEventListener('click', closePvpInfoOnOutsideClick);
-        return () => document.removeEventListener('click', closePvpInfoOnOutsideClick);
+        document.addEventListener('click', handleOutsideClick);
+        return () => document.removeEventListener('click', handleOutsideClick);
     }, []);
 
     // Cálculo da Bola de Neve (Magic Number: quantas cotas pagam 1 nova cota/mês)
@@ -49,16 +54,18 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         : `[+] ${cotasFaltantes} cotas para a Bola de Neve (${cotasParaBolaDeNeve} cotas)`;
     const snowballColor = isSnowballAchieved ? '#8fe3a7' : '#ff8a8a';
 
+
     // Construção dos 12 meses rolantes
     const monthNamesFull = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
-    const monthNamesShort = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    const monthNamesShort = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
 
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+
 
     const rollingMonths = [];
     for (let i = 11; i >= 0; i--) {
@@ -72,6 +79,19 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
             full: monthNamesFull[mIdx - 1]
         });
     }
+
+    const selectedMonthData = activeMonthKey 
+        ? rollingMonths.find(item => `${item.monthIndex}-${item.year}` === activeMonthKey)
+        : null;
+    const selectedMonthHasPaid = selectedMonthData 
+        ? paidMonths.includes(selectedMonthData.monthIndex) 
+        : false;
+
+    React.useEffect(() => {
+        if (monthsContainerRef.current) {
+            monthsContainerRef.current.scrollLeft = monthsContainerRef.current.scrollWidth;
+        }
+    }, []);
 
     // Régua Inteligente de Cores de P/VP: Diferenciando Ações de FIIs
     const isFii = ticker.toUpperCase().replace(/\.SA$/i, '').endsWith('11');
@@ -147,23 +167,23 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
 
                 <div className="row border-top border-bottom border-secondary py-2 mb-3 text-center">
                     <div className="col-4 border-end border-secondary px-1">
-                        <p className="price-label">P. Médio</p>
+                        <p className="price-label mb-0">P. Médio</p>
                         <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
                         <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
                             ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
                         </span>
                     </div>
                     <div className="col-4 border-end border-secondary px-1">
-                        <p className="price-label">Preço Atual</p>
+                        <p className="price-label mb-0">P. Atual</p>
                         <p className="price-value mb-0">R$ {currentPrice.toFixed(2)}</p>
                         <span className={`${dailyTextClass} small`} style={{ fontSize: '0.72rem' }}>
                             ({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)
                         </span>
                     </div>
-                    <div className="col-4 px-1 d-flex flex-column justify-content-center align-items-center position-relative">
-                        <div className="d-flex align-items-center justify-content-center gap-1">
-                            <span className="price-label mb-0">P/VP</span>
-                            <div className="asset-pvp-info" ref={pvpInfoRef}>
+                    <div className="col-4 px-1 position-relative">
+                        <p className="price-label mb-0" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                            P/VP
+                            <span className="asset-pvp-info" ref={pvpInfoRef} style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
                                 <button
                                     type="button"
                                     className="btn btn-link p-0 text-secondary"
@@ -177,7 +197,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                     <i className="bi bi-info-circle-fill"></i>
                                 </button>
                                 {isPvpInfoOpen && (
-                                    <div
+                                    <span
                                         className="position-absolute text-start p-2 shadow-lg"
                                         style={{
                                             bottom: '100%',
@@ -197,15 +217,15 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                         <p className="mb-0" style={{ color: '#8fe3a7' }}>• <strong>&lt; 1.00:</strong> Desconto patrimonial</p>
                                         <p className="mb-0" style={{ color: '#6edff6' }}>• <strong>1.00 - {isFii ? '1.05' : '2.20'}:</strong> Preço justo / paridade</p>
                                         <p className="mb-0" style={{ color: '#ffd56b' }}>• <strong>&gt; {isFii ? '1.05' : '2.20'}:</strong> Ágio sobre o patrimônio</p>
-                                    </div>
+                                    </span>
                                 )}
-                            </div>
-                        </div>
-                        <div className="mt-1">
+                            </span>
+                        </p>
+                        <p className="price-value mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                             {pvpValue !== null && pvpValue > 0 ? (
                                 <span 
                                     className={`badge border ${pvpColorClass}`} 
-                                    style={{ backgroundColor: pvpBadgeBg, fontSize: '0.78rem', fontWeight: 'bold', padding: '4px 6px' }}
+                                    style={{ backgroundColor: pvpBadgeBg, fontSize: '0.85rem', fontWeight: 'bold', padding: '1px 6px', lineHeight: 1.25 }}
                                     title={`P/VP: ${pvpValue.toFixed(2)}`}
                                 >
                                     {pvpValue.toFixed(2)}
@@ -219,7 +239,10 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                     —
                                 </span>
                             )}
-                        </div>
+                        </p>
+                        <span className="small text-secondary" style={{ fontSize: '0.72rem', visibility: 'hidden' }}>
+                            (0.00%)
+                        </span>
                     </div>
                 </div>
 
@@ -228,6 +251,13 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                         className="asset-dividends-details"
                         onToggle={(event) => {
                             const isOpen = event.currentTarget.open;
+                            if (isOpen && monthsContainerRef.current) {
+                                setTimeout(() => {
+                                    if (monthsContainerRef.current) {
+                                        monthsContainerRef.current.scrollLeft = monthsContainerRef.current.scrollWidth;
+                                    }
+                                }, 50);
+                            }
                             document.querySelectorAll('.asset-dividends-details').forEach((details) => {
                                 if (details.open !== isOpen) {
                                     details.open = isOpen;
@@ -281,14 +311,14 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                             ) : (
                                 <div className="d-flex justify-content-around">
                                     <div className="text-center pe-3 border-end border-secondary">
-                                        <p className="small text-secondary mb-0">Renda Mensal</p>
+                                        <p className="small text-secondary mb-0">~ Mensal</p>
                                         <p className="fw-bold mb-0 text-white">R$ {divMensal.toFixed(2)}</p>
                                         <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
                                             + {cotasCompradasPorMes.toFixed(2)} cotas
                                         </p>
                                     </div>
                                     <div className="text-center ps-3">
-                                        <p className="small text-secondary mb-0">Renda Anual</p>
+                                        <p className="small text-secondary mb-0">~ Anual</p>
                                         <p className="fw-bold mb-0 text-white">R$ {divAnual.toFixed(2)}</p>
                                         <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
                                             + {cotasCompradasPorAno.toFixed(2)} cotas
@@ -297,42 +327,57 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                 </div>
                             )}
 
-                            <div className="d-flex align-items-center mt-2 px-1 py-1 bg-black rounded border border-secondary months-grid-container">
+                            <div 
+                                    ref={monthsContainerRef}
+                                    className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container" 
+                                    style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}
+                                >
                                 {rollingMonths.map((item, idx) => {
+                                    const monthKey = `${item.monthIndex}-${item.year}`;
                                     const hasPaid = paidMonths.includes(item.monthIndex);
                                     const boxBg = hasPaid ? '#28a745' : '#212529';
-                                    const textColor = hasPaid ? '#ffffff' : '#495057';
-                                    const tooltipText = hasPaid
-                                        ? `${item.full}/${item.year}: Pago nos últimos 12 meses`
-                                        : `${item.full}/${item.year}: Sem provento nos últimos 12m`;
+                                    const textColor = hasPaid ? '#ffffff' : '#555e68';
                                     const isYearTurn = idx < rollingMonths.length - 1 && item.year !== rollingMonths[idx + 1].year;
+                                    const isSelected = activeMonthKey === monthKey;
 
                                     return (
-                                        <React.Fragment key={`${item.monthIndex}-${item.year}`}>
+                                        <React.Fragment key={monthKey}>
                                             <div
                                                 tabIndex={0}
-                                                className="month-box"
+                                                className="month-box flex-shrink-0"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveMonthKey(prev => prev === monthKey ? null : monthKey);
+                                                }}
                                                 style={{
-                                                    height: '20px',
+                                                    height: '22px',
+                                                    flex: '0 0 calc((100% - 16px) / 5)',
+                                                    maxWidth: 'calc((100% - 16px) / 5)',
+                                                    minWidth: '40px',
                                                     backgroundColor: boxBg,
                                                     color: textColor,
-                                                    fontSize: '0.65rem',
+                                                    fontSize: '0.68rem',
                                                     fontWeight: 'bold',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    borderRadius: '3px',
+                                                    borderRadius: '4px',
                                                     cursor: 'pointer',
-                                                    position: 'relative'
+                                                    position: 'relative',
+                                                    border: isSelected 
+                                                        ? '2px solid #6dffb8' 
+                                                        : (hasPaid ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.04)'),
+                                                    boxShadow: isSelected ? '0 0 8px rgba(109, 255, 184, 0.5)' : 'none',
+                                                    transform: isSelected ? 'scale(1.05)' : 'none',
+                                                    transition: 'all 0.15s ease'
                                                 }}
                                             >
                                                 {item.short}
-                                                <span className="month-tooltip">{tooltipText}</span>
                                             </div>
                                             {isYearTurn && (
                                                 <div
-                                                    className="month-year-divider"
-                                                    style={{ width: '1px', height: '16px', backgroundColor: '#6c757d', margin: '0 2px' }}
+                                                    className="month-year-divider flex-shrink-0"
+                                                    style={{ width: '1px', height: '16px', backgroundColor: '#6c757d', margin: '0 1px' }}
                                                     title="Virada de Ano"
                                                 />
                                             )}
@@ -340,6 +385,24 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                     );
                                 })}
                             </div>
+
+                            {selectedMonthData && (
+                                <div 
+                                    className="mt-2 py-1 px-2 rounded border border-secondary text-center shadow"
+                                    style={{ 
+                                        backgroundColor: '#1a1d20', 
+                                        animation: 'fadeInPopover 0.15s ease-in-out',
+                                        fontSize: '0.72rem'
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <strong className="text-white">{selectedMonthData.full} / {selectedMonthData.year}</strong>
+                                    <span className="mx-1 text-secondary">•</span>
+                                    <span style={{ color: selectedMonthHasPaid ? '#8fe3a7' : '#adb5bd', fontWeight: 600 }}>
+                                        {selectedMonthHasPaid ? 'Pago nos últimos 12 meses' : 'Sem provento nos últimos 12m'}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </details>
                     </div>

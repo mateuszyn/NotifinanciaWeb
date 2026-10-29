@@ -12,6 +12,7 @@
     z-index: 1040;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
+    overflow: visible;
     /* Proteção nativa para telas de iPhones e navegação por gestos do Android */
     padding-bottom: env(safe-area-inset-bottom, 15px); 
 }
@@ -77,7 +78,7 @@
 
 .drawer-content {
     padding: 6px 16px 24px 16px;
-    overflow-x: clip; /* Evita vazamento horizontal sem cortar a lista suspensa vertical. */
+    overflow: visible; /* Evita vazamento horizontal sem cortar a lista suspensa vertical. */
     overflow-y: visible;
 }
 

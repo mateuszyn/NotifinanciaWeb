@@ -565,13 +565,13 @@
 .months-grid-container {
     position: relative;
     gap: 2px;
-    justify-content: flex-start !important;
+    /* justify-content auto */
     box-sizing: border-box;
 }
 
 /* Estilo base de cada mês no grid */
 .month-box {
-    flex: 1 1 0;
+    /* flex auto */
     width: auto;
     min-width: 0;
     box-sizing: border-box;
@@ -695,4 +695,21 @@
 .month-box:hover .month-tooltip {
     visibility: visible;
     opacity: 1;
+}
+
+.asset-card-wrapper .months-grid-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.asset-card-wrapper .months-grid-container::-webkit-scrollbar {
+    height: 3px;
+}
+
+.asset-card-wrapper .months-grid-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }

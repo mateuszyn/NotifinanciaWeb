@@ -193,10 +193,13 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
                     ts = int(ts_str)
                     amount = float(div_data.get("amount", 0.0))
                     
+                    div_date = datetime.fromtimestamp(ts, timezone.utc)
+                    # Histórico de até 2 anos para preencher a recorrência dos meses pagos (Div + JCP)
+                    paid_months_set.add(div_date.month)
+
+                    # Soma para o cálculo de Yield Anual estritamente os últimos 365 dias
                     if ts >= one_year_ago_timestamp:
                         total_dividends_1y += amount
-                        div_date = datetime.fromtimestamp(ts, timezone.utc)
-                        paid_months_set.add(div_date.month)
                 except (ValueError, TypeError):
                     continue
 

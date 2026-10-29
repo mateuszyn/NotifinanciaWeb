@@ -32,6 +32,6 @@ export const TickerDictionary = {
                 ticker.startsWith(normalizedQuery)
                 || normalize(this.getName(ticker)).includes(normalizedQuery)
             ))
-            .slice(0, 8);
+            .slice(0, 5);
     }
 };

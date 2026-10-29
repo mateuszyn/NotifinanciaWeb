@@ -153,7 +153,7 @@ export default function PortfolioSummary({ assets }) {
                             <i className="bi bi-info-circle-fill"></i>
                         </summary>
                         <div className="dy-info-popover text-start">
-                            A renda mensal é uma estimativa calculada pela média dos proventos anuais dividida por 12 meses. Trata-se de projeção indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
+                            O Dividend Yield (DY) é baseado nos proventos pagos nos últimos 12 meses, obtidos via Yahoo Finance. Trata-se de uma base estimada e indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
                         </div>
                     </details>
                 </div>
