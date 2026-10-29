@@ -51,7 +51,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     const isSnowballAchieved = cotasParaBolaDeNeve > 0 && quantity >= cotasParaBolaDeNeve;
     const snowballMessage = isSnowballAchieved 
         ? `[v] Bola de Neve! (${cotasParaBolaDeNeve} Cotas)` 
-        : `[+] ${cotasFaltantes} cotas para a Bola de Neve (${cotasParaBolaDeNeve} cotas)`;
+        : `[+] ${cotasFaltantes} p/ Bola de Neve (${cotasParaBolaDeNeve} cotas)`;
     const snowballColor = isSnowballAchieved ? '#8fe3a7' : '#ff8a8a';
 
 
@@ -130,6 +130,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         }
     }
 
+    
     const cardId = `asset-card-${ticker.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     return (
@@ -211,6 +212,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                             zIndex: 1250,
                                             marginBottom: '6px'
                                         }}
+                                        onClick={(e) => e.stopPropagation()}
                                     >
                                         <strong>Preço / Valor Patrimonial:</strong>
                                         <p className="mb-1 mt-1">Mede quanto o mercado paga sobre o patrimônio contábil do ativo:</p>
@@ -289,7 +291,17 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                 </span>
                             ) : <span aria-hidden="true" />}
                             <span className={`badge ${yieldPct > 0 ? 'bg-success' : 'bg-warning'} m-0`}>
-                                {yieldPct > 0 ? `Yield Anual: ${yieldPct.toFixed(2)}%` : 'Sem dados de Dividendos'}
+                             {yieldPct > 0 ? (
+                                 <>
+                                     <span className="dy-text-full">Yield Anual: {yieldPct.toFixed(2)}%</span>
+                                     <span className="dy-text-short">DY: {yieldPct.toFixed(2)}%</span>
+                                 </>
+                             ) : (
+                                 <>
+                                     <span className="dy-text-full">Sem dados de Dividendos</span>
+                                     <span className="dy-text-short">Sem dados</span>
+                                 </>
+                             )}
                             </span>
                             <i className="bi bi-chevron-down" aria-hidden="true"></i>
                         </summary>
@@ -311,16 +323,16 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                             ) : (
                                 <div className="d-flex justify-content-around">
                                     <div className="text-center pe-3 border-end border-secondary">
-                                        <p className="small text-secondary mb-0">~ Mensal</p>
-                                        <p className="fw-bold mb-0 text-white">R$ {divMensal.toFixed(2)}</p>
-                                        <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
+                                        <p className="text-secondary dividend-label mb-0">~ Mensal</p>
+                                        <p className="dividend-amount-val mb-0 text-white">R$ {divMensal.toFixed(2)}</p>
+                                        <p className="dividend-shares-proj mb-0" style={{ color: '#8fe3a7' }}>
                                             + {cotasCompradasPorMes.toFixed(2)} cotas
                                         </p>
                                     </div>
                                     <div className="text-center ps-3">
-                                        <p className="small text-secondary mb-0">~ Anual</p>
-                                        <p className="fw-bold mb-0 text-white">R$ {divAnual.toFixed(2)}</p>
-                                        <p className="small mt-1 mb-0" style={{ color: '#8fe3a7' }}>
+                                        <p className="text-secondary dividend-label mb-0">~ Anual</p>
+                                        <p className="dividend-amount-val mb-0 text-white">R$ {divAnual.toFixed(2)}</p>
+                                        <p className="dividend-shares-proj mb-0" style={{ color: '#8fe3a7' }}>
                                             + {cotasCompradasPorAno.toFixed(2)} cotas
                                         </p>
                                     </div>

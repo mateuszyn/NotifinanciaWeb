@@ -171,7 +171,7 @@ export default function Dashboard() {
                         <div className="portfolio-view-actions">
                             <button type="button" className="btn btn-outline-light" onClick={() => window.print()}>
                                 <i className="bi bi-printer me-2" aria-hidden="true"></i>
-                                Imprimir carteira
+                                Print
                             </button>
                             {isAuthenticated && (
                                 <button

@@ -86,7 +86,35 @@
     font-size: inherit;
 }
 
+
+
+.dy-text-short {
+    display: none;
+}
+
+.dy-text-full {
+    display: inline;
+}
+
 /* Escala fluida para todos os textos e blocos do card conforme a largura do container */
+/* Padronizacao harmonica dos valores de dividendos mensal/anual */
+.asset-card-wrapper .dividend-amount-val {
+    font-size: clamp(0.72rem, 4.2cqi, 0.95rem);
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.asset-card-wrapper .dividend-label {
+    font-size: clamp(0.62rem, 3.2cqi, 0.72rem);
+    margin-bottom: 2px;
+}
+
+.asset-card-wrapper .dividend-shares-proj {
+    font-size: clamp(0.6rem, 3cqi, 0.72rem);
+    margin-top: 2px;
+}
+
 .asset-card-wrapper .price-value {
     font-size: clamp(0.85rem, 5.2cqi, 1.1rem);
 }
@@ -101,8 +129,31 @@
     padding: 4px 8px;
 }
 
+
+
 /* Ajustes compactos para cards com menos de 280px (ex: 2 colunas no mobile) */
 @container (max-width: 280px) {
+    .dy-text-full {
+        display: none !important;
+    }
+
+    .dy-text-short {
+        display: inline !important;
+    }
+
+    .asset-card-wrapper .dividend-amount-val {
+        font-size: 0.72rem !important;
+        white-space: nowrap !important;
+    }
+
+    .asset-card-wrapper .dividend-label {
+        font-size: 0.6rem !important;
+    }
+
+    .asset-card-wrapper .dividend-shares-proj {
+        font-size: 0.58rem !important;
+        white-space: nowrap !important;
+    }
     .asset-card-wrapper .asset-card {
         padding: 12px;
         border-radius: 16px;
@@ -600,10 +651,10 @@
     body {
         margin: 0 !important;
         padding: 0 !important;
-        background: #fff !important;
-        color: #111 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        background: #0d1117 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
     header,
@@ -623,49 +674,59 @@
         width: 100% !important;
         max-width: none !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 14px !important;
+        background: #0d1117 !important;
     }
 
     .portfolio-summary,
     .asset-card {
-        color: #111 !important;
-        background: #fff !important;
-        border: 1px solid #999 !important;
+        background: linear-gradient(145deg, rgba(17, 24, 45, 0.98), rgba(7, 12, 24, 0.98)) !important;
         box-shadow: none !important;
         break-inside: avoid;
+        color: #fff !important;
     }
 
-    .asset-card *,
-    .portfolio-summary * {
-        color: #111 !important;
+    .asset-card .bg-dark {
+        background-color: #1a1d20 !important;
     }
 
-    .asset-card .bg-dark,
-    .asset-card .bg-black,
-    .portfolio-summary .ticker-popover {
-        background: #fff !important;
+    .asset-card .bg-black {
+        background-color: #000000 !important;
     }
 
     .asset-cards-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 10px;
+        gap: 12px !important;
     }
 
     .asset-card {
-        padding: 12px !important;
+        padding: 14px 12px !important;
+        border-radius: 16px !important;
     }
 
     .asset-dividends-details > summary {
-        display: none;
+        display: flex !important;
+        justify-content: center !important;
+        margin-bottom: 8px !important;
+    }
+
+    .asset-dividends-details > summary .bi-chevron-down,
+    .asset-dividends-details > summary .asset-card-dy-info {
+        display: none !important;
+    }
+
+    .asset-dividends-details > summary > .badge {
+        font-size: 0.8rem !important;
+        padding: 4px 8px !important;
     }
 
     .asset-dividends-content {
-        display: block !important;
+        padding-top: 0 !important;
     }
 
     .asset-card .text-secondary,
     .asset-card .price-label {
-        color: #444 !important;
+        color: #8591af !important;
     }
 }
 
