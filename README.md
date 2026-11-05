@@ -26,7 +26,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 
 **Front-end:**
 - **React 19** + **Vite**
-- **React Router DOM** — History API com rotas limpas (`/termos`, `/privacidade`, `/contato`)
+- **React Router DOM** — History API com rotas limpas (`/radar`, `/termos`, `/privacidade`, `/contato`); o Radar é carregado sob demanda
 - **Context API** — Gerenciamento de sessão global e Google OAuth
 - **Custom Hooks** — `useAssets` como Single Source of Truth com ciclo SWR manual
 - **CSS3 Moderno** — Bootstrap 5.3 (CDN), Container Queries, Flexbox/Grid, `@media print`
@@ -36,6 +36,7 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - **Python 3.12** — versão fixada para compatibilidade com o runtime UV da Vercel
 - **FastAPI** + **Mangum** — handler serverless para o runtime da Vercel
 - **Vercel Serverless Functions** — rotas `/api/market-data` e `/api/ping`
+- **Pydantic** — schemas de resposta tipados em `api/schemas.py`, compartilhados pela camada de API e pelo serviço de mercado
 - **`requests`** + Yahoo Finance Chart API — cotações e histórico de proventos (B3)
 
 **Banco de Dados, Autenticação & Automação:**
@@ -71,8 +72,10 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 - Detalhes de dividendos recolhíveis com abertura/fechamento sincronizados entre todos os cards
 - Controle de densidade dos cards (1 a 3 colunas no desktop, até 2 no mobile) com Container Queries
 - Impressão/exportação da carteira: grade fixa de 3 cards por linha em layout limpo, independente da densidade da tela
-- Gaveta inferior compacta para cadastro de novos ativos com autocomplete offline por ticker ou nome completo (até cinco sugestões; busca sem diferenciar acentos)
+- Gaveta inferior compacta para cadastro de novos ativos com autocomplete offline compartilhado com o Radar, por ticker, nome ou segmento (até cinco sugestões; busca sem diferenciar acentos)
 - Tipografia e ações dos cards redimensionadas conforme a largura individual do card
+- Mapeamento de áreas de atuação em 18 macro-setores com ícones e pop-ups explicativos centralizados (evitando quebras em telas mobile e cards duplos)
+- Smart Hub / Radar de Mercado (Home.jsx) com pesquisa instantânea por ticker, razão social ou segmento
 - Smart Prompt de IA com snapshot da carteira e metodologia Barsi; botão `IA` nos controles rola até o prompt; link direto para o Google Gemini logo abaixo
 
 **Automação & Relatórios**
@@ -86,8 +89,8 @@ Este projeto foi construído com foco em **performance, resiliência e UX**, res
 ### 🔜 Em Aberto — Próximas Prioridades
 
 - [ ] **Monetização (AdSense):** Injeção do bloco de Ads/parceiros para faturamento institucional
-- [ ] **Radar de Oportunidades:** Tela inicial pública (sem login obrigatório) exibindo seleção curada de ações e FIIs no mesmo layout dos cards, com botão "Adicionar à Carteira" e foco na Bola de Neve
-- [ ] **Busca Direta por Ativo:** Barra de pesquisa instantânea no Radar para consultar qualquer ticker da B3 com preview de custos e dividendos
+- [x] **Smart Hub / Radar:** Página pública em `/radar` com busca por ticker, empresa e segmento e destaques de ações e FIIs
+- [ ] **Evoluir o Radar:** Exibir cards de mercado e preview de custos e dividendos antes de adicionar à carteira
 - [ ] **Zoom / Escala Nativa Mobile:** Controle de escala de visualização para o usuário ver mais ativos simultaneamente no celular sem depender do zoom do navegador
 - [ ] **Notificações Customizáveis:** Painel para gerenciar frequência de e-mails e alertas de variações bruscas
 - [ ] **Progressive Web App (PWA):** App instalável na tela inicial com Web Push Notifications
@@ -177,16 +180,17 @@ O Vercel CLI sobe o Vite e o servidor Python em paralelo e cria um proxy reverso
 NotifinanciaWeb_MVC/
 ├── api/                    # Back-end Python (FastAPI + Mangum)
 │   ├── index.py            # Entrypoint da Serverless Function
+│   ├── schemas.py          # Schemas Pydantic para respostas da API
 │   └── services/
 │       └── marketService.py
 ├── src/
 │   ├── components/         # Componentes React (AssetCard, Header, PortfolioSummary…)
 │   ├── context/            # AuthContext (sessão Supabase + Google OAuth)
 │   ├── hooks/              # useAssets (SWR, CRUD, filtros, perfil)
-│   ├── pages/              # Dashboard, Termos, Privacidade, Contato
+│   ├── pages/              # Dashboard, Smart Hub/Radar, Termos, Privacidade, Contato
 │   ├── services/           # asset-service.js (Supabase + API Python)
 │   ├── styles/             # cards.css, style.css
-│   └── utils/              # ticker-dictionary.js, ticker-names.js, brokers.js
+│   └── utils/              # ticker-data.js (fonte única) e ticker-dictionary.js (busca), segment-icon.js, brokers.js
 ├── docs/
 │   └── REACT_MIGRATION_PLAN.md
 ├── AGENTS.md               # Guia de arquitetura para agentes de IA

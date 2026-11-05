@@ -21,6 +21,7 @@ Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
 |---|---|---|
 | **Ponto de entrada React** | `src/main.jsx` & `src/App.jsx` | Roteamento (`react-router-dom`), AuthProvider e click listener global |
 | **Página Principal** | `src/pages/Dashboard.jsx` | Orquestra Header, Resumo da Carteira, Grid de Cards, Modais e Drawer |
+| **Smart Hub / Radar** | `src/pages/Home.jsx` | Busca global por ticker, empresa e segmento; rota pública `/radar`, carregada sob demanda |
 | **Card de Ativo Individual** | `src/components/AssetCard.jsx` | Exibe PM, Preço Atual, Variação, DY anual e detalhes recolhíveis de **Dividendos**, **Grid 12 meses rolantes** e **Bola de Neve** |
 | **Painel de Resumo** | `src/components/PortfolioSummary.jsx` | Total investido, variação global, DY médio, grid de tickers com popovers |
 | **Adicionar Ativo (Drawer)** | `src/components/AddAssetDrawer.jsx` | Drawer deslizante, autocomplete por ticker/nome, botão "$ Atual", quantidade estimada e validação; no mobile, ticker e P. Médio ficam lado a lado e quantidade ganha uma linha mais larga abaixo |
@@ -29,8 +30,9 @@ Ao receber uma tarefa, vá **diretamente** ao arquivo responsável:
 | **Estado Global da Carteira** | `src/hooks/useAssets.js` | **Single Source of Truth**: SWR, CRUD (add, update, delete, refresh), filtros e perfil |
 | **Autenticação** | `src/context/AuthContext.jsx` | Sessão Supabase, Google OAuth com `prompt: 'select_account'` |
 | **Serviço de Dados (Assets)** | `src/services/asset-service.js` | Chamadas ao Supabase (`assets`) e chamadas à API Python (`/api/market-data`) |
-| **API Python (Back-end)** | `api/index.py` & `api/services/marketService.py` | FastAPI consulta Yahoo Finance para cotação/DY/proventos e Fundamentus para P/VP |
-| **Dicionário de Tickers B3** | `src/utils/ticker-dictionary.js` & `src/utils/ticker-names.js` | Busca instantânea offline por ticker ou nome completo, sem diferenciar acentos |
+| **API Python (Back-end)** | `api/index.py`, `api/schemas.py` & `api/services/marketService.py` | FastAPI com schemas Pydantic; consulta Yahoo Finance para cotação/DY/proventos e Fundamentus para P/VP |
+| **Dicionário de Tickers B3** | `src/utils/ticker-dictionary.js` & `src/utils/ticker-data.js` | Busca instantânea offline por ticker, nome completo e segmento (ações, FIIs e Fiagros) |
+| **Segmentos & Áreas de Atuação** | `src/utils/segment-icon.js` | Mapeamento de ~200 segmentos em 18 macro-áreas com ícones e explicações operacionais |
 | **Configuração de Corretoras** | `src/utils/brokers.js` | Cores, links diretos para Play Store/Web e identidade visual de cada broker |
 | **Estilos Globais e Cards** | `src/styles/cards.css` & `src/styles/style.css` | Cores dinâmicas de rentabilidade, grade responsiva, impressão em densidade máxima (3 cards por linha), tamanhos responsivos dos controles, `.month-box` e `.asset-card` |
 
@@ -85,7 +87,8 @@ useAssets() hook é montado
 - **DARF em Exclusão**: FIIs (ticker terminado em `11`) vendidos com lucro apurado têm retenção de 20% de IR via DARF (código 6015). O SweetAlert2 deve orientar o usuário sobre a data limite do DARF antes de confirmar a exclusão.
 - **Corretoras**: Links nos cards devem priorizar `brokerInfo.appUrl` (Play Store/Mobile) em relação ao link web.
 - **Cache P/VP**: `cached_pvp` é cache de fallback no Supabase. O P/VP calculado por `currentPrice / vpa` tem precedência quando ambos estão disponíveis; caso contrário, usa o cache de mercado salvo em `priceToBook`.
-- **Busca de ativos**: sugestões exibem até cinco resultados por ticker ou nome completo; nomes são resolvidos por `src/utils/ticker-names.js`, mas o ticker continua sendo o valor selecionado e persistido.
+- **Busca de ativos**: `src/utils/ticker-data.js` é a fonte única de ticker, nome, segmento e tipo; `src/utils/ticker-dictionary.js` deriva a lista de suas chaves e centraliza a busca sem diferenciar caixa ou acentos por ticker, nome e segmento. Cadastro e Radar reutilizam a busca; o ticker continua sendo o valor selecionado e persistido.
+- **Segmentos & Pop-ups Informativos**: Ícones e descrições do modelo de negócio são obtidos por `getSegmentDetails` em `src/utils/segment-icon.js`. Todos os pop-ups (P/VP, DY e Segmentos) são padronizados e centralizados para não estourarem no mobile nem com grade de 2 colunas.
 
 ---
 

@@ -7,6 +7,11 @@ from typing import Any, Dict, List, Optional
 import requests
 import urllib3
 
+try:
+    from api.schemas import MarketDataResult
+except ImportError:  # pragma: no cover - compatibility for local execution
+    from schemas import MarketDataResult
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_HEADERS = {
@@ -126,7 +131,7 @@ def _fetch_chart_payload(session: requests.Session, query_symbol: str) -> Option
                 
     return None
 
-def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
+def get_market_data(symbols: List[str]) -> Dict[str, MarketDataResult]:
     if not symbols:
         return {}
 
@@ -137,7 +142,7 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
     session = requests.Session()
     session.headers.update(DEFAULT_HEADERS)
 
-    results: Dict[str, Dict[str, Any]] = {}
+    results: Dict[str, MarketDataResult] = {}
     now_timestamp = int(datetime.now(timezone.utc).timestamp())
     one_year_ago_timestamp = now_timestamp - (365 * 24 * 60 * 60)
 
@@ -152,14 +157,14 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
         try:
             result = _fetch_chart_payload(session, query_symbol)
             if not result:
-                results[original_symbol] = {
-                    "ticker": original_symbol,
-                    "price": None,
-                    "changePercent": None,
-                    "yieldpct": 0.0,
-                    "paidMonths": [],
-                    "priceToBook": pvp_value,
-                }
+                results[original_symbol] = MarketDataResult(
+                    ticker=original_symbol,
+                    price=None,
+                    changePercent=None,
+                    yieldpct=0.0,
+                    paidMonths=[],
+                    priceToBook=pvp_value,
+                )
                 continue
 
             meta = result.get("meta") or {}
@@ -208,24 +213,24 @@ def get_market_data(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
 
             paid_months = sorted(list(paid_months_set))
 
-            results[original_symbol] = {
-                "ticker": original_symbol,
-                "price": price,
-                "changePercent": change_percent,
-                "yieldpct": yieldpct,
-                "paidMonths": paid_months,
-                "priceToBook": pvp_value,
-            }
+            results[original_symbol] = MarketDataResult(
+                ticker=original_symbol,
+                price=price,
+                changePercent=change_percent,
+                yieldpct=yieldpct,
+                paidMonths=paid_months,
+                priceToBook=pvp_value,
+            )
 
         except Exception as exc:
             logger.error("Erro inesperado ao processar %s: %s", original_symbol, exc)
-            results[original_symbol] = {
-                "ticker": original_symbol,
-                "price": None,
-                "changePercent": None,
-                "yieldpct": 0.0,
-                "paidMonths": [],
-                "priceToBook": pvp_value,
-            }
+            results[original_symbol] = MarketDataResult(
+                ticker=original_symbol,
+                price=None,
+                changePercent=None,
+                yieldpct=0.0,
+                paidMonths=[],
+                priceToBook=pvp_value,
+            )
 
     return results

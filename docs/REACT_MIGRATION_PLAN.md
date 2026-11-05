@@ -150,7 +150,7 @@ Esta é a sessão de maior valor percebido pelo usuário final: revelar os dados
 - [x] **Correção da Bola de Neve**: desacoplado o cálculo de `rendaMensalPorCota` da quantidade de cotas na carteira (`currentPrice * (yieldPct / 100) / 12`), garantindo que o Magic Number permaneça matematicamente constante independente do usuário editar sua quantidade de cotas.
 - [x] **Bloqueio de Ativo Duplicado**: adicionada validação no `AddAssetDrawer.jsx` impedindo o cadastro do mesmo ticker mais de uma vez na carteira.
 - [x] **Recálculo Otimista**: `updateAsset` no `useAssets.js` agora recalcula `divAnual`, `divMensal` e `totalValue` imediatamente ao editar a quantidade.
-- [x] **Ticker descoberto**: após cadastrar um ticker validado ausente de `TickerDictionary.list`, o React registra o ticker na tabela `tickers_descobertos`, como fazia o controller vanilla.
+- [x] **Ticker descoberto**: após cadastrar um ticker validado ausente do catálogo conhecido, o React registra o ticker na tabela `tickers_descobertos`, como fazia o controller vanilla. A verificação atual consulta diretamente `TICKER_DATA`.
 
 ### Próximos Passos (Sessão 3.1 & Novas Features de UX)
 - [x] `src/components/PromptView.jsx` — Gerador de Smart Prompt compacto com resumo da carteira, DY e status da Bola de Neve; pede análise mensal por ativo e recomendação fundamentada de compra com critérios de qualidade, valuation, risco, carteira e renda de FIIs
@@ -205,8 +205,8 @@ Os **18 arquivos legados** foram formalmente removidos do repositório:
 ## ✅ Sessão 5 — Busca por Nome e Cache P/VP (22/10/2026)
 
 ### Busca por Nome Completo no Cadastro
-- [x] `src/utils/ticker-names.js` — Mapa local ticker → nome completo para os ativos suportados.
-- [x] `src/utils/ticker-dictionary.js` — Busca por ticker ou nome, normalizando caixa e diacríticos; mantém a seleção e persistência pelo ticker.
+- [x] `src/utils/ticker-data.js` — Fonte única local dos tickers, nomes, segmentos e tipos de ativos; substituiu o antigo mapa `ticker-names.js`.
+- [x] `src/utils/ticker-dictionary.js` — Serviço de busca derivado do catálogo, por ticker ou nome, normalizando caixa e diacríticos; mantém a seleção e persistência pelo ticker.
 - [x] `src/components/AddAssetDrawer.jsx` — Sugestões exibidas como `TICKER — Nome`, limitadas a cinco e sem depender do espaço interno da gaveta.
 
 ### Cache de P/VP no Supabase

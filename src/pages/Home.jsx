@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { TICKER_DATA } from '../utils/ticker-data.js';
+import { TickerDictionary } from '../utils/ticker-dictionary.js';
 
 export default function Home({ onSelectAsset, onOpenAI }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -8,15 +8,10 @@ export default function Home({ onSelectAsset, onOpenAI }) {
     // Filtragem otimizada dos tickers para a barra de pesquisa global
     const filteredTickers = useMemo(() => {
         if (!searchTerm.trim()) return [];
-        const term = searchTerm.toLowerCase();
-        
-        return Object.entries(TICKER_DATA)
-            .filter(([ticker, data]) => {
-                const matchesSearch = ticker.toLowerCase().includes(term) || data.name.toLowerCase().includes(term) || data.segment.toLowerCase().includes(term);
-                const matchesType = selectedTypeFilter === 'ALL' || data.type === selectedTypeFilter;
-                return matchesSearch && matchesType;
-            })
-            .slice(0, 8); // Limita a 8 resultados para manter a UI leve
+        return TickerDictionary.search(searchTerm, {
+            type: selectedTypeFilter,
+            limit: 8
+        });
     }, [searchTerm, selectedTypeFilter]);
 
     // Seleção dinâmica ou destacada de ativos para os Destaques do Dia (Ex: BESST + FIIs)
@@ -52,7 +47,7 @@ export default function Home({ onSelectAsset, onOpenAI }) {
                         {/* Dropdown de Resultados da Pesquisa Global */}
                         {filteredTickers.length > 0 && (
                             <div className="position-absolute w-100 bg-dark border border-secondary rounded-3 mt-2 shadow-lg text-start z-3 overflow-hidden">
-                                {filteredTickers.map(([ticker, data]) => (
+                                {filteredTickers.map(({ ticker, ...data }) => (
                                     <div 
                                         key={ticker}
                                         className="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center hover-bg-dark cursor-pointer transition"

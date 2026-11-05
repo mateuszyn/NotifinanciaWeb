@@ -685,9 +685,3 @@ export const TICKER_DATA = Object.freeze({
     "XTED11": { name: "FII TRX", segment: "Imobiliário / Outros", type: "FII" },
     "ZAVI11": { name: "FII Zavit Real Estate", segment: "Logística / Industrial", type: "FII" }
 });
-
-export const TICKER_NAMES = Object.freeze(
-    Object.fromEntries(
-        Object.entries(TICKER_DATA).map(([ticker, data]) => [ticker, data.name])
-    )
-);

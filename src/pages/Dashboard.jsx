@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAssets } from '../hooks/useAssets';
 import AssetCard from '../components/AssetCard';
@@ -10,6 +11,8 @@ import AddAssetDrawer from '../components/AddAssetDrawer';
 
 export default function Dashboard() {
     const { isAuthenticated } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
     const [assetColumns, setAssetColumns] = useState(() => (
         window.matchMedia('(max-width: 767px)').matches ? 1 : 3
@@ -31,6 +34,22 @@ export default function Dashboard() {
     } = useAssets();
 
     const [editingAsset, setEditingAsset] = useState(null);
+    const [radarTicker, setRadarTicker] = useState(() => location.state?.ticker || '');
+
+    React.useEffect(() => {
+        if (!radarTicker || !location.state?.ticker) return;
+
+        navigate(`${location.pathname}${location.search}${location.hash}`, {
+            replace: true,
+            state: null
+        });
+    }, [location.hash, location.pathname, location.search, location.state, navigate, radarTicker]);
+
+    React.useEffect(() => {
+        if (location.hash === '#portfolio-prompt') {
+            document.getElementById('portfolio-prompt')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [location.hash]);
 
     React.useEffect(() => {
         const mediaQuery = window.matchMedia('(max-width: 767px)');
@@ -254,6 +273,7 @@ export default function Dashboard() {
                 <AddAssetDrawer 
                     onAddAsset={addAsset} 
                     existingTickers={assets.map(a => a.ticker)} 
+                    initialTicker={radarTicker}
                 />
             )}
         </>

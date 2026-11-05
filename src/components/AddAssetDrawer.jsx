@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TickerDictionary } from '../utils/ticker-dictionary.js';
-import { TICKER_DATA } from '../utils/ticker-data.js';
 import { getSegmentIcon } from '../utils/segment-icon.js';
 import { AssetService } from '../services/asset-service.js';
 
-export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
+export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initialTicker = '' }) {
     const [isOpen, setIsOpen] = useState(false);
     const [ticker, setTicker] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -18,6 +17,12 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
     const suggestionsRef = useRef(null);
     const snowballInfoRef = useRef(null);
     const [isSnowballInfoOpen, setIsSnowballInfoOpen] = useState(false);
+
+    useEffect(() => {
+        if (!initialTicker) return;
+        setTicker(initialTicker);
+        setIsOpen(true);
+    }, [initialTicker]);
 
     // Recalcula o custo da bola de neve sempre que mudar o P. Médio ou o yield detectado
     const priceNum = parseFloat(averagePrice) || 0;
@@ -35,7 +40,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
         }
 
         if (query.length >= 2) {
-            const results = TickerDictionary.search(query).slice(0, 5);
+            const results = TickerDictionary.search(query, { limit: 5 });
             setSuggestions(results);
         } else {
             setSuggestions([]);
@@ -200,11 +205,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                                         overflowY: 'auto'
                                     }}
                                 >
-                                    {suggestions.map((s, idx) => {
-                                        const name = TickerDictionary.getName(s);
-                                        const cleanTicker = s.toUpperCase().replace(/\.SA$/i, '').trim();
-                                        const segment = TICKER_DATA[cleanTicker]?.segment;
-
+                                    {suggestions.map((suggestion, idx) => {
                                         return (
                                             <li key={idx}>
                                                 <a 
@@ -212,21 +213,21 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                                                     href="#"
                                                     onClick={(e) => {
                                                         e.preventDefault();
-                                                        setTicker(s);
+                                                        setTicker(suggestion.ticker);
                                                         setSuggestions([]);
                                                     }}
                                                 >
-                                                    {s}{name && (
+                                                    {suggestion.ticker}{suggestion.name && (
                                                         <>
                                                             {' — '}
-                                                            {segment && (
+                                                            {suggestion.segment && (
                                                                 <i
-                                                                    className={`bi ${getSegmentIcon(segment)} me-1`}
-                                                                    title={`Área de atuação: ${segment}`}
+                                                                    className={`bi ${getSegmentIcon(suggestion.segment)} me-1`}
+                                                                    title={`Área de atuação: ${suggestion.segment}`}
                                                                     aria-hidden="true"
                                                                 />
                                                             )}
-                                                            {name}
+                                                            {suggestion.name}
                                                         </>
                                                     )}
                                                 </a>
