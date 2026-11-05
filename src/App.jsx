@@ -1,14 +1,27 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
-// Importando as páginas (por enquanto provisórias)
 import Dashboard from './pages/Dashboard';
+const Home = React.lazy(() => import('./pages/Home'));
 import Termos from './pages/Termos';
 import Privacidade from './pages/Privacidade';
 import Contato from './pages/Contato';
 import Footer from './components/Footer';
 import LoginModal from './components/LoginModal';
+
+function RadarRoute() {
+  const navigate = useNavigate();
+
+  return (
+    <Suspense fallback={<div className="container py-5 text-center text-secondary">Carregando Radar...</div>}>
+      <Home
+        onSelectAsset={ticker => navigate('/', { state: { ticker } })}
+        onOpenAI={() => navigate('/#portfolio-prompt')}
+      />
+    </Suspense>
+  );
+}
 
 // O App.jsx é o esqueleto principal. 
 // Ele engloba tudo com o AuthProvider (para liberar o login global)
@@ -37,6 +50,7 @@ export default function App() {
         <div className="flex-grow-1">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/radar" element={<RadarRoute />} />
             <Route path="/termos" element={<Termos />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/contato" element={<Contato />} />

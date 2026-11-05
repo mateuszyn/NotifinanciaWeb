@@ -1,6 +1,6 @@
 import { supabase } from '../infrastructure/supabase-client.js';
 import { Asset } from '../models/asset.js';
-import { TickerDictionary } from '../utils/ticker-dictionary.js';
+import { TICKER_DATA } from '../utils/ticker-data.js';
 
 export const AssetService = {
     // --- BLINDAGEM JWT ---
@@ -198,7 +198,7 @@ export const AssetService = {
 
     async addDiscoveredTicker(ticker) {
         const normalizedTicker = ticker.toUpperCase().replace(/\.SA$/i, '');
-        if (TickerDictionary.list.includes(normalizedTicker)) return;
+        if (TICKER_DATA[normalizedTicker]) return;
 
         const { error } = await supabase
             .from('tickers_descobertos')
