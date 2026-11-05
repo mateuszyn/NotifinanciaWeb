@@ -1,4 +1,4 @@
-import { TICKER_NAMES } from './ticker-names.js';
+import { TICKER_NAMES } from './ticker-data.js';
 
 export const TickerDictionary = {
     // Unimos as duas listas que você forneceu (Ações + FIIs)

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TickerDictionary } from '../utils/ticker-dictionary.js';
+import { TICKER_DATA } from '../utils/ticker-data.js';
+import { getSegmentIcon } from '../utils/segment-icon.js';
 import { AssetService } from '../services/asset-service.js';
 
 export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
@@ -198,21 +200,39 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [] }) {
                                         overflowY: 'auto'
                                     }}
                                 >
-                                    {suggestions.map((s, idx) => (
-                                        <li key={idx}>
-                                            <a 
-                                                className="dropdown-item ticker-suggestion-item text-white border-bottom border-secondary py-2 cursor-pointer hover-bg-light"
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setTicker(s);
-                                                    setSuggestions([]);
-                                                }}
-                                            >
-                                                {s}{TickerDictionary.getName(s) ? ` — ${TickerDictionary.getName(s)}` : ''}
-                                            </a>
-                                        </li>
-                                    ))}
+                                    {suggestions.map((s, idx) => {
+                                        const name = TickerDictionary.getName(s);
+                                        const cleanTicker = s.toUpperCase().replace(/\.SA$/i, '').trim();
+                                        const segment = TICKER_DATA[cleanTicker]?.segment;
+
+                                        return (
+                                            <li key={idx}>
+                                                <a 
+                                                    className="dropdown-item ticker-suggestion-item text-white border-bottom border-secondary py-2 cursor-pointer hover-bg-light"
+                                                    href="#"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setTicker(s);
+                                                        setSuggestions([]);
+                                                    }}
+                                                >
+                                                    {s}{name && (
+                                                        <>
+                                                            {' — '}
+                                                            {segment && (
+                                                                <i
+                                                                    className={`bi ${getSegmentIcon(segment)} me-1`}
+                                                                    title={`Área de atuação: ${segment}`}
+                                                                    aria-hidden="true"
+                                                                />
+                                                            )}
+                                                            {name}
+                                                        </>
+                                                    )}
+                                                </a>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             )}
                         </div>

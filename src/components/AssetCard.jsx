@@ -1,5 +1,7 @@
 import React from 'react';
 import { BROKERS } from '../utils/brokers.js';
+import { TICKER_DATA } from '../utils/ticker-data.js'; // Importando o dicionário enriquecido com segmentos[cite: 3]
+import { getSegmentDetails } from '../utils/segment-icon.js';
 
 export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, onRetry }) {
     const [isDyInfoOpen, setIsDyInfoOpen] = React.useState(false);
@@ -28,6 +30,37 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     const quantity = Number(asset.quantity) || 0;
     const paidMonths = asset.paidMonths || asset.paid_months || [];
 
+    // Metadados do ativo (Nome e Segmento do dicionário)[cite: 3]
+    const cleanTicker = ticker ? ticker.toUpperCase().replace(/\.SA$/i, '').trim() : '';
+    const assetMeta = TICKER_DATA[cleanTicker] || { name: ticker, segment: 'Geral', type: 'Ação' };
+    const segmentInfo = getSegmentDetails(assetMeta.segment);
+
+    const handleShowSegmentModal = (e) => {
+        e.stopPropagation();
+        if (window.Swal) {
+            window.Swal.fire({
+                title: `<i class="bi ${segmentInfo.icon} text-primary me-2"></i>${segmentInfo.title}`,
+                html: `
+                    <div class="text-start mt-2 mb-1">
+                        <p class="mb-2" style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.5;">
+                            ${segmentInfo.description}
+                        </p>
+                        <div class="p-2 rounded bg-black border border-secondary text-secondary mt-3" style="font-size: 0.78rem;">
+                            <span class="text-white fw-bold">Atuação:</span> ${assetMeta.segment} (${assetMeta.type || 'Ativo'})
+                        </div>
+                    </div>
+                `,
+                confirmButtonColor: '#0d6efd',
+                confirmButtonText: 'Entendi',
+                background: '#212529',
+                color: '#fff',
+                customClass: {
+                    popup: 'border border-secondary shadow-lg rounded-4'
+                }
+            });
+        }
+    };
+
     React.useEffect(() => {
         const handleOutsideClick = (event) => {
             if (pvpInfoRef.current && !pvpInfoRef.current.contains(event.target)) {
@@ -42,7 +75,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         return () => document.removeEventListener('click', handleOutsideClick);
     }, []);
 
-    // Cálculo da Bola de Neve (Magic Number: quantas cotas pagam 1 nova cota/mês)
+    // Cálculo da Bola de Neve (Magic Number)
     const rendaMensalPorCota = currentPrice > 0 && yieldPct > 0 ? (currentPrice * (yieldPct / 100)) / 12 : 0;
     const cotasParaBolaDeNeve = rendaMensalPorCota > 0 && currentPrice > 0 ? Math.ceil(currentPrice / rendaMensalPorCota) : 0;
     const cotasFaltantes = Math.max(0, cotasParaBolaDeNeve - quantity);
@@ -54,7 +87,6 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         : `[+] ${cotasFaltantes} p/ Bola de Neve (${cotasParaBolaDeNeve} cotas)`;
     const snowballColor = isSnowballAchieved ? '#8fe3a7' : '#ff8a8a';
 
-
     // Construção dos 12 meses rolantes
     const monthNamesFull = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
@@ -65,7 +97,6 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-
 
     const rollingMonths = [];
     for (let i = 11; i >= 0; i--) {
@@ -93,15 +124,14 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         }
     }, []);
 
-    // Régua Inteligente de Cores de P/VP: Diferenciando Ações de FIIs
-    const isFii = ticker.toUpperCase().replace(/\.SA$/i, '').endsWith('11');
+    // Régua Inteligente de Cores de P/VP
+    const isFii = cleanTicker.endsWith('11');
     const pvpValue = asset.pvp !== undefined && asset.pvp !== null ? Number(asset.pvp) : null;
     let pvpColorClass = 'text-secondary border-secondary';
     let pvpBadgeBg = 'rgba(255, 255, 255, 0.05)';
 
     if (pvpValue !== null && pvpValue > 0) {
         if (isFii) {
-            // REGRA FIIs: Ativo físico/imóveis. 1.00 é paridade estrita.
             if (pvpValue < 1.00) {
                 pvpColorClass = 'text-success border-success';
                 pvpBadgeBg = 'rgba(40, 167, 69, 0.12)';
@@ -113,31 +143,43 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                 pvpBadgeBg = 'rgba(255, 193, 7, 0.12)';
             }
         } else {
-            // REGRA AÇÕES: Empresas acumulam caixa, marcas e crescimento. P/VP de 1.0 a 2.5 é muito comum e saudável.
             if (pvpValue < 1.00) {
-                pvpColorClass = 'text-success border-success'; // Abaixo do valor contábil dos ativos
+                pvpColorClass = 'text-success border-success';
                 pvpBadgeBg = 'rgba(40, 167, 69, 0.12)';
             } else if (pvpValue <= 2.20) {
-                pvpColorClass = 'text-info border-info'; // Faixa saudável para empresas com dividendos (Bancos, Elétricas, Celulose)
+                pvpColorClass = 'text-info border-info';
                 pvpBadgeBg = 'rgba(13, 202, 240, 0.12)';
             } else if (pvpValue <= 3.50) {
-                pvpColorClass = 'text-light border-secondary'; // Múltiplo moderado de crescimento
+                pvpColorClass = 'text-light border-secondary';
                 pvpBadgeBg = 'rgba(255, 255, 255, 0.08)';
             } else {
-                pvpColorClass = 'text-warning border-warning'; // Ágio elevado sobre o patrimônio
+                pvpColorClass = 'text-warning border-warning';
                 pvpBadgeBg = 'rgba(255, 193, 7, 0.12)';
             }
         }
     }
 
-    
-    const cardId = `asset-card-${ticker.replace(/[^a-zA-Z0-9]/g, '')}`;
+    const cardId = `asset-card-${cleanTicker}`;
 
     return (
         <div id={cardId} className="asset-card-wrapper">
             <div className={`asset-card ${borderClass}`}>
                 <div className="d-flex justify-content-between align-items-center mb-3 asset-card-header">
-                    <h4 className="m-0 fw-bold">{ticker}</h4>
+                    <div className="d-flex align-items-center gap-2">
+                        <h4 className="m-0 fw-bold">{ticker}</h4>
+                        {assetMeta.segment && (
+                            <button 
+                                type="button"
+                                className="badge border d-inline-flex align-items-center gap-1 asset-segment-btn"
+                                onClick={handleShowSegmentModal}
+                                title={`Clique para ver detalhes: ${assetMeta.segment}`}
+                                aria-label={`Informações do segmento: ${assetMeta.segment}`}
+                            >
+                                <i className={`bi ${segmentInfo.icon}`}></i>
+                                <span className="d-none d-sm-inline">{assetMeta.segment.split('/')[0].trim()}</span>
+                            </button>
+                        )}
+                    </div>
                     <div className="d-flex gap-3 align-items-center asset-card-actions">
                         {isGuest ? (
                             <span className="badge bg-secondary">Dados de Exemplo</span>
@@ -202,8 +244,9 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                         className="position-absolute text-start p-2 shadow-lg"
                                         style={{
                                             bottom: '100%',
-                                            right: '0',
-                                            width: '210px',
+                                            right: '50%',
+                                            transform: 'translateX(50%)',
+                                            width: 'min(220px, calc(100vw - 32px))',
                                             backgroundColor: '#212529',
                                             border: '1px solid #555',
                                             borderRadius: '8px',
@@ -216,9 +259,9 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                     >
                                         <strong>Preço / Valor Patrimonial:</strong>
                                         <p className="mb-1 mt-1">Mede quanto o mercado paga sobre o patrimônio contábil do ativo:</p>
-                                        <p className="mb-0" style={{ color: '#8fe3a7' }}>• <strong>&lt; 1.00:</strong> Desconto patrimonial</p>
-                                        <p className="mb-0" style={{ color: '#6edff6' }}>• <strong>1.00 - {isFii ? '1.05' : '2.20'}:</strong> Preço justo / paridade</p>
-                                        <p className="mb-0" style={{ color: '#ffd56b' }}>• <strong>&gt; {isFii ? '1.05' : '2.20'}:</strong> Ágio sobre o patrimônio</p>
+                                        <p className="mb-0" style={{ color: '#8fe3a7' }}><strong>&lt; 1.00:</strong> Desconto patrimonial</p>
+                                        <p className="mb-0" style={{ color: '#6edff6' }}><strong>1.00 - {isFii ? '1.05' : '2.20'}:</strong> Preço justo / paridade</p>
+                                        <p className="mb-0" style={{ color: '#ffd56b' }}><strong>&gt; {isFii ? '1.05' : '2.20'}:</strong> Ágio sobre o patrimônio</p>
                                     </span>
                                 )}
                             </span>
@@ -233,21 +276,13 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                     {pvpValue.toFixed(2)}
                                 </span>
                             ) : (
-                                <span 
-                                    className="text-secondary" 
-                                    style={{ fontSize: '0.85rem', fontWeight: 'bold' }}
-                                    title="P/VP indisponível no momento"
-                                >
-                                    —
-                                </span>
+                                <span className="text-secondary" style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>—</span>
                             )}
                         </p>
-                        <span className="small text-secondary" style={{ fontSize: '0.72rem', visibility: 'hidden' }}>
-                            (0.00%)
-                        </span>
                     </div>
                 </div>
 
+                {/* Bloco de Dividendos e Meses */}
                 <div className="bg-dark rounded p-2 text-center border border-secondary mb-3 mx-0 dividend-box-container position-relative">
                     <details
                         className="asset-dividends-details"
@@ -291,17 +326,17 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                 </span>
                             ) : <span aria-hidden="true" />}
                             <span className={`badge ${yieldPct > 0 ? 'bg-success' : 'bg-warning'} m-0`}>
-                             {yieldPct > 0 ? (
-                                 <>
-                                     <span className="dy-text-full">Yield Anual: {yieldPct.toFixed(2)}%</span>
-                                     <span className="dy-text-short">DY: {yieldPct.toFixed(2)}%</span>
-                                 </>
-                             ) : (
-                                 <>
-                                     <span className="dy-text-full">Sem dados de Dividendos</span>
-                                     <span className="dy-text-short">Sem dados</span>
-                                 </>
-                             )}
+                               {yieldPct > 0 ? (
+                                   <>
+                                       <span className="dy-text-full">Yield Anual: {yieldPct.toFixed(2)}%</span>
+                                       <span className="dy-text-short">DY: {yieldPct.toFixed(2)}%</span>
+                                   </>
+                               ) : (
+                                   <>
+                                       <span className="dy-text-full">Sem dados de Dividendos</span>
+                                       <span className="dy-text-short">Sem dados</span>
+                                   </>
+                               )}
                             </span>
                             <i className="bi bi-chevron-down" aria-hidden="true"></i>
                         </summary>
@@ -340,10 +375,10 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                             )}
 
                             <div 
-                                    ref={monthsContainerRef}
-                                    className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container" 
-                                    style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}
-                                >
+                                ref={monthsContainerRef}
+                                className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container" 
+                                style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}
+                            >
                                 {rollingMonths.map((item, idx) => {
                                     const monthKey = `${item.monthIndex}-${item.year}`;
                                     const hasPaid = paidMonths.includes(item.monthIndex);
@@ -417,12 +452,12 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                             )}
                         </div>
                     </details>
-                    </div>
+                </div>
 
                 <a href={brokerInfo.appUrl || brokerInfo.webUrl} target="_blank" rel="noopener noreferrer" 
                    className="btn w-100 d-flex align-items-center justify-content-center gap-2 asset-broker-link"
                    style={{ backgroundColor: brokerInfo.color, color: brokerInfo.textColor, border: 'none', fontWeight: 'bold', borderRadius: '8px', height: '45px' }}>
-                   <i className="bi bi-box-arrow-up-right"></i> Operar na {brokerName}
+                    <i className="bi bi-box-arrow-up-right"></i> Operar na {brokerName}
                 </a>
             </div>
         </div>

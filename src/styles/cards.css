@@ -96,6 +96,26 @@
     display: inline;
 }
 
+.asset-segment-btn {
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+    font-size: 0.68rem;
+    padding: 3px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.asset-segment-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    transform: translateY(-1px);
+}
+
 /* Escala fluida para todos os textos e blocos do card conforme a largura do container */
 /* Padronizacao harmonica dos valores de dividendos mensal/anual */
 .asset-card-wrapper .dividend-amount-val {
