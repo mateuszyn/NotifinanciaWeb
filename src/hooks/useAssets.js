@@ -3,6 +3,38 @@ import { useAuth } from '../context/AuthContext';
 import { AssetService } from '../services/asset-service.js';
 import { supabase } from '../infrastructure/supabase-client.js';
 
+const GUEST_ASSETS_KEY = 'notifinancia_guest_assets';
+const GUEST_SORT_KEY = 'notifinancia_guest_sort';
+const GUEST_BROKER_KEY = 'notifinancia_guest_broker';
+
+function readGuestPreference(key, fallback) {
+    try {
+        return window.localStorage.getItem(key) || fallback;
+    } catch (error) {
+        console.error(`Não foi possível carregar a preferência local "${key}".`, error);
+        return fallback;
+    }
+}
+
+function readGuestAssets() {
+    try {
+        const storedAssets = window.localStorage.getItem(GUEST_ASSETS_KEY);
+        if (!storedAssets) return [];
+
+        const parsedAssets = JSON.parse(storedAssets);
+        return Array.isArray(parsedAssets)
+            ? parsedAssets.filter(asset => asset && typeof asset.ticker === 'string')
+            : [];
+    } catch (error) {
+        console.error('Não foi possível carregar a carteira local do visitante.', error);
+        return [];
+    }
+}
+
+function saveGuestAssets(assets) {
+    window.localStorage.setItem(GUEST_ASSETS_KEY, JSON.stringify(assets));
+}
+
 // Ordenação: a mesma lógica que existia no AssetController
 function sortAssets(assets, criteria) {
     const sorted = [...assets];
@@ -21,7 +53,9 @@ function sortAssets(assets, criteria) {
 
 export function useAssets() {
     const { user, isAuthenticated } = useAuth();
-    const [rawAssets, setRawAssets] = useState([]);
+    const [rawAssets, setRawAssets] = useState(() => (
+        isAuthenticated ? [] : readGuestAssets()
+    ));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -35,13 +69,9 @@ export function useAssets() {
             setLoading(true);
             try {
                 if (!isAuthenticated) {
-                    // GUEST MODE
-                    const demoAssets = [
-                        { id: 1, ticker: 'MXRF11', quantity: 150, averagePrice: 10.20, vpa: 10.12, currentPrice: 10.55, variacaoPm: 3.43, dailyChange: 0.5, yieldPct: 12.32, divMensal: 15.00, divAnual: 180.00, paidMonths: [1,2,3,4,5,6,7,8,9,10,11,12], enrich: () => {} },
-                        { id: 2, ticker: 'PETR4', quantity: 100, averagePrice: 38.50, vpa: 32.40, currentPrice: 36.20, variacaoPm: -5.97, dailyChange: -1.2, yieldPct: 18.00, divMensal: 0, divAnual: 651.00, paidMonths: [5, 8, 11], enrich: () => {} },
-                        { id: 3, ticker: 'KLBN4', quantity: 500, averagePrice: 4.10, vpa: 4.45, currentPrice: 4.35, variacaoPm: 6.09, dailyChange: 1.1, yieldPct: 6.5, divMensal: 0, divAnual: 141.00, paidMonths: [2, 5, 8, 11], enrich: () => {} }
-                    ];
-                    setRawAssets(demoAssets);
+                    setRawAssets(readGuestAssets());
+                    setSortBy(readGuestPreference(GUEST_SORT_KEY, 'pm_asc'));
+                    setBroker(readGuestPreference(GUEST_BROKER_KEY, 'Nubank'));
                 } else {
                     // Busca perfil do usuário
                     const { data: prof } = await supabase
@@ -96,7 +126,9 @@ export function useAssets() {
     // Muda ordenação e salva no perfil
     const handleSortChange = async (newSort) => {
         setSortBy(newSort);
-        if (isAuthenticated && user) {
+        if (!isAuthenticated) {
+            window.localStorage.setItem(GUEST_SORT_KEY, newSort);
+        } else if (user) {
             await supabase.from('profiles').update({ sort_by: newSort }).eq('id', user.id);
         }
     };
@@ -104,7 +136,9 @@ export function useAssets() {
     // Muda corretora e salva no perfil
     const handleBrokerChange = async (newBroker) => {
         setBroker(newBroker);
-        if (isAuthenticated && user) {
+        if (!isAuthenticated) {
+            window.localStorage.setItem(GUEST_BROKER_KEY, newBroker);
+        } else if (user) {
             await supabase.from('profiles').update({ preferred_broker: newBroker }).eq('id', user.id);
         }
     };
@@ -126,7 +160,48 @@ export function useAssets() {
     // --- FUNÇÕES DE CRUD ---
 
     const addAsset = async (assetData) => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated) {
+            const ticker = String(assetData.ticker).trim().toUpperCase();
+            if (rawAssets.some(asset => asset.ticker.toUpperCase() === ticker)) {
+                throw new Error(`O ativo ${ticker} já está na carteira.`);
+            }
+
+            const quantity = Number(assetData.quantity);
+            const averagePrice = Number(assetData.averagePrice);
+            if (!ticker || !Number.isFinite(quantity) || quantity <= 0
+                || !Number.isFinite(averagePrice) || averagePrice <= 0) {
+                throw new Error('Informe um ticker, uma quantidade e um preço médio válidos.');
+            }
+
+            const currentPrice = Number(assetData.currentPrice) > 0
+                ? Number(assetData.currentPrice)
+                : averagePrice;
+            const yieldPct = Number(assetData.yieldPct) || 0;
+            const guestAsset = {
+                id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                ticker,
+                quantity,
+                averagePrice,
+                currentPrice,
+                dailyChange: Number(assetData.dailyChange) || 0,
+                yieldPct,
+                pvp: Number(assetData.pvp) || null,
+                type: assetData.type,
+                divMensal: currentPrice * (yieldPct / 100) * quantity / 12,
+                divAnual: currentPrice * (yieldPct / 100) * quantity,
+                variacaoPm: averagePrice > 0
+                    ? ((currentPrice / averagePrice) - 1) * 100
+                    : 0,
+                totalValue: quantity * currentPrice,
+                paidMonths: Array.isArray(assetData.paidMonths) ? assetData.paidMonths : [],
+                dataError: false
+            };
+            const updatedAssets = [...rawAssets, guestAsset];
+            saveGuestAssets(updatedAssets);
+            setRawAssets(updatedAssets);
+            return { tickerDiscoveryFailed: false };
+        }
+
         await AssetService.addAsset(assetData);
         let tickerDiscoveryFailed = false;
         try {
@@ -144,7 +219,29 @@ export function useAssets() {
     };
 
     const updateAsset = async (id, data) => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated) {
+            const updatedAssets = rawAssets.map(asset => {
+                if (asset.id !== id) return asset;
+
+                const quantity = Number(data.quantity) || 0;
+                const averagePrice = Number(data.averagePrice) || 0;
+                return {
+                    ...asset,
+                    quantity,
+                    averagePrice,
+                    variacaoPm: averagePrice > 0
+                        ? ((asset.currentPrice / averagePrice) - 1) * 100
+                        : 0,
+                    totalValue: asset.currentPrice * quantity,
+                    divAnual: asset.currentPrice * (asset.yieldPct / 100) * quantity,
+                    divMensal: asset.currentPrice * (asset.yieldPct / 100) * quantity / 12
+                };
+            });
+            saveGuestAssets(updatedAssets);
+            setRawAssets(updatedAssets);
+            return;
+        }
+
         await AssetService.updateAsset(id, data);
         // Atualização otimista no estado local
         setRawAssets(prev => prev.map(a => {
@@ -162,7 +259,13 @@ export function useAssets() {
     };
 
     const deleteAsset = async (id) => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated) {
+            const updatedAssets = rawAssets.filter(asset => asset.id !== id);
+            saveGuestAssets(updatedAssets);
+            setRawAssets(updatedAssets);
+            return;
+        }
+
         await AssetService.deleteAsset(id);
         // Remove localmente
         setRawAssets(prev => prev.filter(a => a.id != id));

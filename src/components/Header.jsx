@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { BROKERS } from '../utils/brokers.js';
-import { supabase } from '../infrastructure/supabase-client.js';
 
 export default function Header({ sortBy, onSortChange, broker, onBrokerChange, notificationsEnabled, onToggleNotif }) {
     const { user, isAuthenticated, signOut, signInWithGoogle } = useAuth();
-    const [showNotifBalloon, setShowNotifBalloon] = useState(false);
-    const notifRef = useRef(null);
+    const isNotifOn = isAuthenticated && notificationsEnabled;
 
     const rawUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
     const avatarUrl = user?.user_metadata?.avatar_url || '';
@@ -15,34 +12,80 @@ export default function Header({ sortBy, onSortChange, broker, onBrokerChange, n
     const currentBroker = broker || 'Nubank';
     const brokerInfo = BROKERS[currentBroker] || BROKERS.Nubank;
 
-    const bellIcon = notificationsEnabled ? 'bi-bell-fill text-warning' : 'bi-bell text-secondary';
+    const handleNotifClick = async () => {
+        if (!isAuthenticated) {
+            const result = await window.Swal.fire({
+                title: '<i class="bi bi-envelope-paper text-success me-2"></i>Relatórios Diários da Carteira',
+                html: '<div class="text-start text-light"><p>O <b>Notifinancia</b> envia diariamente às <b>18h</b> um resumo completo do fechamento do mercado da sua carteira: cotações, proventos creditados e evolução da sua Bola de Neve.</p><p class="text-secondary small mb-0">Faça login com sua conta Google para cadastrar seu e-mail e receber os alertas diários.</p></div>',
+                showCancelButton: true,
+                confirmButtonText: 'Conectar com Google',
+                cancelButtonText: 'Agora não',
+                confirmButtonColor: '#198754',
+                background: '#1a1d29',
+                color: '#ffffff'
+            });
 
-    // Fecha o balão ao clicar fora
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (notifRef.current && !notifRef.current.contains(e.target)) {
-                setShowNotifBalloon(false);
+            if (result.isConfirmed) {
+                window.bootstrap.Modal.getOrCreateInstance(
+                    document.getElementById('loginModal')
+                ).show();
             }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+            return;
+        }
 
-    const handleNotifClick = () => {
-        if (!isAuthenticated) return;
-        // Mostra o balão, e depois aciona o toggle
-        setShowNotifBalloon(prev => !prev);
-        onToggleNotif && onToggleNotif();
+        const result = await window.Swal.fire({
+            title: notificationsEnabled
+                ? 'Gerenciar Notificações Diárias'
+                : 'Ativar Relatório Diário (18h)',
+            html: '<div class="text-start text-light"><p>No seu e-mail, receba às 18h um resumo do fechamento do mercado, com as cotações, avisos e links rápidos para ação na sua corretora.</p><p>Acompanhar os resultados com regularidade ajuda a manter a disciplina de investimentos e a consistência da sua estratégia de dividendos.</p></div>',
+            showCancelButton: true,
+            confirmButtonText: notificationsEnabled
+                ? 'Desativar Envio às 18h'
+                : 'Ativar Envio Diário às 18h',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: notificationsEnabled ? '#dc3545' : '#198754',
+            background: '#1a1d29',
+            color: '#ffffff'
+        });
+
+        if (result.isConfirmed) onToggleNotif?.();
     };
 
     return (
         <header className="bg-dark px-3 py-3 border-bottom border-secondary">
             <div className="header-container container-fluid p-0 d-flex flex-column flex-lg-row align-items-center justify-content-between gap-2 gap-lg-3">
                 
-                {/* Logo */}
                 <div className="header-brand text-center text-lg-start">
-                    <div className="fw-bold text-success title-responsive">NOTIFINANCIA</div>
-                    <div className="text-secondary fw-bold subtitle-responsive">Relatórios Diários da Carteira</div>
+                    <button
+                        type="button"
+                        className={`header-brand-btn ${isNotifOn
+                            ? 'border border-success bg-dark shadow-sm is-active'
+                            : 'border border-danger bg-dark shadow-sm is-disabled'}`}
+                        onClick={handleNotifClick}
+                        aria-label={isNotifOn
+                            ? 'Gerenciar relatório diário da carteira'
+                            : 'Ativar relatório diário da carteira'}
+                    >
+                        <span className="header-brand-icon" aria-hidden="true">
+                            <i className={`bi ${isNotifOn
+                                ? 'bi-envelope-check-fill text-success'
+                                : 'bi-envelope-x text-danger pulse-attention'}`}></i>
+                            <i className={`bi bi-bell-fill header-brand-bell ${isNotifOn
+                                ? 'text-success'
+                                : 'text-danger'}`}></i>
+                        </span>
+                        <span className="header-brand-copy">
+                            <span className={`fw-bold title-responsive ${isNotifOn ? 'text-success' : 'text-danger'}`}>
+                                NOTIFINANCIA
+                            </span>
+                            <span
+                                className={`small fw-semibold d-block subtitle-responsive ${isNotifOn ? 'text-success' : 'text-danger'}`}
+                                style={{ fontSize: '0.65rem' }}
+                            >
+                                {isNotifOn ? 'Relatório Diário • 18h' : 'Relatório Diário • Desativado'}
+                            </span>
+                        </span>
+                    </button>
                 </div>
 
                 {/* Filtros centrais */}
@@ -50,7 +93,6 @@ export default function Header({ sortBy, onSortChange, broker, onBrokerChange, n
                     <select
                         id="sort-select"
                         className="form-select bg-dark text-white border-secondary form-select-sm"
-                        disabled={!isAuthenticated}
                         value={sortBy || 'pm_asc'}
                         onChange={e => onSortChange && onSortChange(e.target.value)}
                     >
@@ -68,7 +110,6 @@ export default function Header({ sortBy, onSortChange, broker, onBrokerChange, n
                         id="broker-select"
                         className="form-select border-secondary form-select-sm"
                         style={{ backgroundColor: brokerInfo.color, color: brokerInfo.textColor, fontWeight: 'bold' }}
-                        disabled={!isAuthenticated}
                         value={currentBroker}
                         onChange={e => onBrokerChange && onBrokerChange(e.target.value)}
                     >
@@ -81,70 +122,6 @@ export default function Header({ sortBy, onSortChange, broker, onBrokerChange, n
                 {/* Ações à direita */}
                 <div className="d-flex align-items-center justify-content-center gap-3 actions-container">
                     
-                    {/* Sino de Notificações com balão mobile */}
-                    <div className="position-relative" ref={notifRef}>
-                        <button
-                            id="btn-toggle-notif"
-                            className="btn btn-link p-0 shadow-none border-0"
-                            disabled={!isAuthenticated}
-                            onClick={handleNotifClick}
-                            aria-label="Ativar/desativar notificações"
-                        >
-                            <span className="notification-mail-icon" aria-hidden="true">
-                                <i className="bi bi-envelope-fill fs-4"></i>
-                                <i className={`${bellIcon} notification-bell-icon`}></i>
-                            </span>
-                        </button>
-
-                        {/* Balão de aviso — visível após o clique */}
-                        {showNotifBalloon && (
-                            <div style={{
-                                position: 'absolute',
-                                top: 'calc(100% + 10px)',
-                                right: 0,
-                                zIndex: 1050,
-                                background: '#1e2330',
-                                border: '1px solid #495057',
-                                borderRadius: '10px',
-                                padding: '10px 14px',
-                                minWidth: '220px',
-                                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                                fontSize: '0.82rem',
-                                lineHeight: '1.4',
-                                whiteSpace: 'nowrap',
-                            }}>
-                                {/* Seta apontando para cima */}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '-7px',
-                                    right: '12px',
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft: '7px solid transparent',
-                                    borderRight: '7px solid transparent',
-                                    borderBottom: '7px solid #495057',
-                                }} />
-                                {notificationsEnabled ? (
-                                    <>
-                                        <i className="bi bi-bell-fill text-warning me-2"></i>
-                                        <strong className="text-warning">Notificações Ativas</strong>
-                                        <p className="text-secondary mb-0 mt-1" style={{ whiteSpace: 'normal' }}>
-                                            Você receberá um relatório da carteira diariamente às <strong className="text-white">18h</strong>.
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="bi bi-bell-slash text-secondary me-2"></i>
-                                        <strong className="text-secondary">Notificações Desativadas</strong>
-                                        <p className="text-secondary mb-0 mt-1" style={{ whiteSpace: 'normal' }}>
-                                            Clique no sininho para receber relatórios às <strong className="text-white">18h</strong>.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
                     {/* Menu do Usuário ou Botão Entrar */}
                     {!isAuthenticated ? (
                         <button

@@ -1,28 +1,37 @@
 import React, { useState } from 'react';
 import { AssetService } from '../services/asset-service.js';
 
-export default function PromptView({ assets, isGuest }) {
+export default function PromptView({ assets = [], isGuest, mode = 'portfolio' }) {
     const [copyStatus, setCopyStatus] = useState('');
 
-    if (isGuest) return null;
-
-    const summary = AssetService.calculatePortfolioSummary(assets);
     const currency = value => new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
         maximumFractionDigits: 2
     }).format(Number(value) || 0);
     const percent = value => `${(Number(value) || 0) >= 0 ? '+' : ''}${(Number(value) || 0).toFixed(2)}%`;
+    const recommended = mode === 'recommended';
+    const summary = recommended ? null : AssetService.calculatePortfolioSummary(assets);
     const assetLines = assets.map(asset => {
+        const marketData = asset.marketData ?? {};
         const quantity = Number(asset.quantity) || 0;
         const averagePrice = Number(asset.averagePrice) || 0;
-        const currentPrice = Number(asset.currentPrice) || 0;
-        const yieldPct = Number(asset.yieldPct) || 0;
+        const currentPrice = Number(asset.currentPrice ?? marketData.price ?? marketData.regularMarketPrice) || 0;
+        const yieldPct = Number(asset.yieldPct ?? marketData.yieldpct ?? marketData.yieldPct) || 0;
+        const pvp = Number(asset.pvp ?? marketData.priceToBook ?? marketData.price_to_book);
+        const snowballTarget = yieldPct > 0 ? Math.ceil(1200 / yieldPct) : 0;
+
+        if (recommended) {
+            const snowballStatus = snowballTarget > 0
+                ? `${snowballTarget} cotas para gerar 1 nova cota/mês`
+                : 'indeterminada (DY indisponível)';
+            return `- ${asset.ticker}: ${asset.type ?? 'Ativo'} | preço atual ${currency(currentPrice)} | P/VP ${Number.isFinite(pvp) && pvp > 0 ? pvp.toFixed(2) : 'indisponível'} | DY ${yieldPct.toFixed(2)}% a.a. | bola de neve: ${snowballStatus}`;
+        }
+
         const positionValue = currentPrice * quantity;
         const profit = (currentPrice - averagePrice) * quantity;
         const annualIncome = positionValue * yieldPct / 100;
         const monthlyIncome = annualIncome / 12;
-        const snowballTarget = yieldPct > 0 ? Math.ceil(1200 / yieldPct) : 0;
         const snowballStatus = snowballTarget > 0
             ? quantity >= snowballTarget
                 ? `atingida (${snowballTarget} cotas)`
@@ -32,13 +41,16 @@ export default function PromptView({ assets, isGuest }) {
 
         return `- ${asset.ticker}: ${quantity} cotas | PM ${currency(averagePrice)} | atual ${currency(currentPrice)} | posição ${currency(positionValue)} | resultado ${currency(profit)} (${percent(averagePrice > 0 ? ((currentPrice / averagePrice) - 1) * 100 : 0)}) | hoje ${percent(asset.dailyChange)} | DY ${yieldPct.toFixed(2)}% a.a. | renda est. ${currency(monthlyIncome)}/mês, ${currency(annualIncome)}/ano | bola de neve: ${snowballStatus}${dataStatus}`;
     }).join('\n');
-    const totalSnowballs = assets.filter(asset => Number(asset.yieldPct) > 0).length;
+    const totalSnowballs = assets.filter(asset => Number(asset.yieldPct ?? asset.marketData?.yieldpct) > 0).length;
     const achievedSnowballs = assets.filter(asset => {
-        const yieldPct = Number(asset.yieldPct) || 0;
+        const yieldPct = Number(asset.yieldPct ?? asset.marketData?.yieldpct) || 0;
         return yieldPct > 0 && (Number(asset.quantity) || 0) >= Math.ceil(1200 / yieldPct);
     }).length;
 
-    const prompt = `Atue como analista financeiro sênior, especialista em análise fundamentalista e carteiras previdenciárias de dividendos. Analise os dados abaixo de forma objetiva e educativa. Separe fatos de estimativas, aponte concentração, riscos e pontos fortes, e não invente informações ausentes nem trate desempenho passado como garantia.\n\nPara cada ativo, faça também uma análise da variação da cotação no mês atual (ou nos últimos 30 dias, se o mês ainda estiver em andamento), pesquisando notícias recentes e fatores macroeconômicos e específicos da empresa/setor que possam explicar o movimento. Cite fontes e datas, diferencie fatos de hipóteses e informe claramente se não conseguir consultar dados ou notícias atuais. Não atribua causalidade sem evidência.\n\nAo final, apresente uma recomendação fundamentada sobre o que seria mais prudente comprar hoje para acumular dividendos progressivamente. Não decida apenas pelo maior DY: avalie sustentabilidade e qualidade dos proventos, saúde financeira e operacional atual, valuation/preço e margem de segurança, perspectivas e riscos do setor, notícias, situação macroeconômica, variação dos ativos e concentração já existente nesta carteira. Leve em conta a meta de Bola de Neve indicada e o equilíbrio da carteira; se não houver uma meta de renda ou orçamento de aporte informado, diga isso e não invente valores. Use como referência princípios de investimento previdenciário associados à abordagem Barsi — empresas sólidas, geração de caixa e dividendos sustentáveis com disciplina de preço — sem presumir que um ativo seja seguro apenas por pagar dividendos. Avalie os FIIs com os mesmos critérios de qualidade, risco e preço, reconhecendo que podem contribuir para renda mensal, mesmo que tenham perfil diferente de ações. Diga claramente se compraria hoje, esperaria ou não recomendaria cada alternativa mais relevante; ordene as opções, justifique prós e contras e indique quais dados faltam ou que condições mudariam a decisão. Não prometa retorno nem apresente a análise como garantia ou aconselhamento personalizado.\n\nCARTEIRA — ${new Date().toLocaleDateString('pt-BR')}\nPatrimônio atual: ${currency(summary.currentValue)} | Investido: ${currency(summary.investedValue)} | Resultado não realizado: ${currency(summary.profit)} (${percent(summary.profitPct)}) | Variação estimada hoje: ${percent(summary.dailyChangePct)}\nRenda estimada pelo DY dos últimos 12 meses: ${currency(summary.annualDividends)}/ano (${currency(summary.annualDividends / 12)}/mês) | DY da carteira: ${summary.currentValue > 0 ? (summary.annualDividends / summary.currentValue * 100).toFixed(2) : '0.00'}% a.a. | Bola de neve atingida: ${achievedSnowballs}/${totalSnowballs} ativos com DY calculável\n\nATIVOS\n${assetLines || 'Nenhum ativo cadastrado.'}\n\nDY e rendas são estimativas, não garantias.`;
+    const analysisGuidance = 'Avalie de forma objetiva e educativa, separe fatos de estimativas, não invente informações ausentes e não trate desempenho passado como garantia. Para cada ativo, analise a variação da cotação no mês atual (ou nos últimos 30 dias), notícias recentes e fatores macroeconômicos e específicos do setor; cite fontes e datas, diferencie fatos de hipóteses e informe quando não puder consultar dados atuais. Avalie sustentabilidade dos proventos, fundamentos, valuation, margem de segurança, riscos e perspectivas. Não decida apenas pelo maior DY, não prometa retorno e não apresente a análise como aconselhamento personalizado.';
+    const prompt = recommended
+        ? `Atue como analista financeiro sênior. Avalie a seguinte seleção de 10 ativos recomendados da B3 (Ações e FIIs) para iniciar uma estratégia de renda passiva com dividendos... ${analysisGuidance}\n\nConsidere os valores de DY, P/VP e preços informados como estimativas que podem estar defasadas. Avalie separadamente ações e FIIs, compare qualidade e riscos, explique a meta Bola de Neve de cada ativo e ordene as alternativas por adequação, sem presumir que maior DY significa melhor oportunidade.\n\nSELEÇÃO RECOMENDADA — ${new Date().toLocaleDateString('pt-BR')}\n${assetLines || 'A lista de recomendações ainda está sendo carregada.'}\n\nOs dados de mercado e as estimativas não garantem rendimentos futuros.`
+        : `Atue como analista financeiro sênior, especialista em análise fundamentalista e carteiras previdenciárias de dividendos. ${analysisGuidance}\n\nAo final, apresente uma recomendação fundamentada sobre o que seria mais prudente comprar hoje para acumular dividendos progressivamente. Considere sustentabilidade dos proventos, saúde financeira e operacional, valuation, margem de segurança, riscos e concentração já existente. Leve em conta a meta de Bola de Neve e o equilíbrio da carteira; não invente orçamento ou meta de renda. Use princípios previdenciários associados à abordagem Barsi sem presumir que um ativo seja seguro apenas por pagar dividendos. Avalie FIIs considerando perfil, renda e riscos próprios.\n\nCARTEIRA — ${new Date().toLocaleDateString('pt-BR')}\nPatrimônio atual: ${currency(summary.currentValue)} | Investido: ${currency(summary.investedValue)} | Resultado não realizado: ${currency(summary.profit)} (${percent(summary.profitPct)}) | Variação estimada hoje: ${percent(summary.dailyChangePct)}\nRenda estimada pelo DY dos últimos 12 meses: ${currency(summary.annualDividends)}/ano (${currency(summary.annualDividends / 12)}/mês) | DY da carteira: ${summary.currentValue > 0 ? (summary.annualDividends / summary.currentValue * 100).toFixed(2) : '0.00'}% a.a. | Bola de neve atingida: ${achievedSnowballs}/${totalSnowballs} ativos com DY calculável\n\nATIVOS\n${assetLines || 'Nenhum ativo cadastrado.'}\n\nDY e rendas são estimativas, não garantias.`;
 
     const handleCopy = async () => {
         try {
@@ -51,7 +63,7 @@ export default function PromptView({ assets, isGuest }) {
     };
 
     return (
-        <section id="portfolio-prompt" className="prompt-view d-flex flex-column align-items-center mt-5 mb-5" aria-label="Análise da carteira com inteligência artificial">
+        <section id={recommended ? 'recommended-prompt' : 'portfolio-prompt'} className="prompt-view d-flex flex-column align-items-center mt-5 mb-5" aria-label={recommended ? 'Análise das recomendações da B3 com inteligência artificial' : 'Análise da carteira com inteligência artificial'}>
             <div className="text-start bg-dark border border-secondary rounded p-3 w-100" style={{ maxWidth: '600px' }}>
                 <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
                     <label htmlFor="portfolio-ai-prompt" className="text-secondary small fw-bold mb-0">
@@ -66,7 +78,7 @@ export default function PromptView({ assets, isGuest }) {
                     id="portfolio-ai-prompt"
                     readOnly
                     value={prompt}
-                    aria-label="Prompt com o resumo atual da carteira"
+                    aria-label={recommended ? 'Prompt com análise dos ativos recomendados' : 'Prompt com o resumo atual da carteira'}
                     className="form-control bg-black text-white border-secondary font-monospace"
                     style={{ height: '180px', fontSize: '0.75rem', resize: 'none' }}
                 />

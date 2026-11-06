@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAssets } from '../hooks/useAssets';
+import { useRecommendedAssets } from '../hooks/useRecommendedAssets';
+import { TICKER_DATA } from '../utils/ticker-data.js';
 import AssetCard from '../components/AssetCard';
 import PortfolioSummary from '../components/PortfolioSummary';
+import PortfolioTabs from '../components/PortfolioTabs';
+import RecommendedView from '../components/RecommendedView';
 import PromptView from '../components/PromptView';
 import Header from '../components/Header';
 import UpdateAssetModal from '../components/UpdateAssetModal';
@@ -13,6 +17,9 @@ export default function Dashboard() {
     const { isAuthenticated } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState(() => (
+        isAuthenticated ? 'portfolio' : 'recommended'
+    ));
     const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
     const [assetColumns, setAssetColumns] = useState(() => (
         window.matchMedia('(max-width: 767px)').matches ? 1 : 3
@@ -32,9 +39,28 @@ export default function Dashboard() {
         deleteAsset,
         refreshSingleAsset
     } = useAssets();
+    const {
+        recommendedAssets,
+        loading: recommendedLoading,
+        error: recommendedError,
+        refresh: refreshRecommendations
+    } = useRecommendedAssets();
 
     const [editingAsset, setEditingAsset] = useState(null);
-    const [radarTicker, setRadarTicker] = useState(() => location.state?.ticker || '');
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [radarTicker, setRadarTicker] = useState(() => (
+        location.state?.ticker
+        || window.sessionStorage.getItem('notifinancia:pending-radar-ticker')
+        || ''
+    ));
+    const pendingPromptScroll = React.useRef(false);
+
+    React.useEffect(() => {
+        if (isAuthenticated && radarTicker) {
+            setActiveTab('portfolio');
+            window.sessionStorage.removeItem('notifinancia:pending-radar-ticker');
+        }
+    }, [isAuthenticated, radarTicker]);
 
     React.useEffect(() => {
         if (!radarTicker || !location.state?.ticker) return;
@@ -50,6 +76,81 @@ export default function Dashboard() {
             document.getElementById('portfolio-prompt')?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [location.hash]);
+
+    React.useEffect(() => {
+        const promptLoading = activeTab === 'portfolio' ? loading : recommendedLoading;
+        if (promptLoading || !pendingPromptScroll.current) return;
+
+        const promptId = activeTab === 'portfolio' ? 'portfolio-prompt' : 'recommended-prompt';
+        document.getElementById(promptId)?.scrollIntoView({ behavior: 'smooth' });
+        pendingPromptScroll.current = false;
+    }, [activeTab, loading, recommendedLoading]);
+
+    const handlePromptClick = () => {
+        pendingPromptScroll.current = true;
+        const promptLoading = activeTab === 'portfolio' ? loading : recommendedLoading;
+        if (!promptLoading) {
+            const promptId = activeTab === 'portfolio' ? 'portfolio-prompt' : 'recommended-prompt';
+            document.getElementById(promptId)?.scrollIntoView({ behavior: 'smooth' });
+            pendingPromptScroll.current = false;
+        }
+    };
+
+    const portfolioControls = (
+        <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
+            <div className="portfolio-view-actions">
+                <button type="button" className="btn btn-outline-light" onClick={() => {
+                    const restoreScroll = () => {
+                        document.body.style.overflow = '';
+                        document.body.style.overflowY = '';
+                        document.documentElement.style.overflow = '';
+                        document.documentElement.style.overflowY = '';
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.width = '';
+                        window.removeEventListener('afterprint', restoreScroll);
+                    };
+                    window.addEventListener('afterprint', restoreScroll);
+                    window.print();
+                }}>
+                    <i className="bi bi-printer me-2" aria-hidden="true"></i>
+                    Print
+                </button>
+                <button
+                    type="button"
+                    className="btn btn-outline-info"
+                    onClick={handlePromptClick}
+                >
+                    <i className="bi bi-stars me-2" aria-hidden="true"></i>
+                    IA
+                    <i className="bi bi-chevron-down ms-2" aria-hidden="true"></i>
+                </button>
+            </div>
+            <label className="asset-zoom-control" htmlFor="asset-columns">
+                <span className="asset-zoom-label">
+                    <i className="bi bi-zoom-out me-2" aria-hidden="true"></i>
+                    Densidade dos cards
+                </span>
+                <span className="asset-zoom-slider">
+                    <span aria-hidden="true">−</span>
+                    <input
+                        id="asset-columns"
+                        type="range"
+                        min="1"
+                        max={isMobile ? 2 : 3}
+                        step="1"
+                        value={assetColumns}
+                        onChange={event => setAssetColumns(Number(event.target.value))}
+                        aria-valuetext={`${assetColumns} ${assetColumns === 1 ? 'card' : 'cards'} por linha`}
+                    />
+                    <span aria-hidden="true">+</span>
+                </span>
+                <span className="visually-hidden" aria-live="polite">
+                    {assetColumns} {assetColumns === 1 ? 'card' : 'cards'} por linha
+                </span>
+            </label>
+        </div>
+    );
 
     React.useEffect(() => {
         const mediaQuery = window.matchMedia('(max-width: 767px)');
@@ -72,7 +173,8 @@ export default function Dashboard() {
     };
 
     const handleDelete = (asset) => {
-        const isFII = asset.ticker.endsWith('11');
+        const cleanTicker = asset.ticker.replace(/\.SA$/i, '').toUpperCase();
+        const isFII = TICKER_DATA[cleanTicker]?.type === 'FII';
         const lucro = (asset.currentPrice - asset.averagePrice) * asset.quantity;
         const temLucro = lucro > 0;
         const temPrejuizo = lucro < 0;
@@ -154,12 +256,35 @@ export default function Dashboard() {
 
             <div className="container mt-4 mb-5 pb-5">
 
-                {!isAuthenticated && (
-                    <p className="text-warning mb-3">
-                        <i className="bi bi-eye me-1"></i> Visualizando dados de demonstração.
-                    </p>
+                <PortfolioTabs
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    portfolioCount={assets.length}
+                    recommendedCount={10}
+                />
+
+                {activeTab === 'portfolio' && !loading && (
+                    <PortfolioSummary assets={assets} />
                 )}
 
+                {activeTab === 'recommended' && (
+                    <>
+                        <RecommendedView
+                            onAddAsset={addAsset}
+                            assetColumns={assetColumns}
+                            recommendedAssets={recommendedAssets}
+                            loading={recommendedLoading}
+                            error={recommendedError}
+                            refresh={refreshRecommendations}
+                            toolbar={portfolioControls}
+                        />
+                        <PromptView mode="recommended" assets={recommendedAssets} isGuest={false} />
+                    </>
+                )}
+
+                {activeTab === 'portfolio' && (
+                    <>
+                {portfolioControls}
                 {loading && (
                     <div className="row">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -183,84 +308,41 @@ export default function Dashboard() {
 
                 {error && <p className="text-danger">{error}</p>}
 
-                {!loading && <PortfolioSummary assets={assets} />}
-
-                {!loading && (
-                    <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
-                        <div className="portfolio-view-actions">
-                            <button type="button" className="btn btn-outline-light" onClick={() => {
-                                const restoreScroll = () => {
-                                    document.body.style.overflow = '';
-                                    document.body.style.overflowY = '';
-                                    document.documentElement.style.overflow = '';
-                                    document.documentElement.style.overflowY = '';
-                                    document.body.style.position = '';
-                                    document.body.style.top = '';
-                                    document.body.style.width = '';
-                                    window.removeEventListener('afterprint', restoreScroll);
-                                };
-                                window.addEventListener('afterprint', restoreScroll);
-                                window.print();
-                            }}>
-                                <i className="bi bi-printer me-2" aria-hidden="true"></i>
-                                Print
-                            </button>
-                            {isAuthenticated && (
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-info"
-                                    onClick={() => document.getElementById('portfolio-prompt')?.scrollIntoView({ behavior: 'smooth' })}
-                                >
-                                    <i className="bi bi-stars me-2" aria-hidden="true"></i>
-                                    IA
-                                    <i className="bi bi-chevron-down ms-2" aria-hidden="true"></i>
-                                </button>
-                            )}
-                        </div>
-                        <label className="asset-zoom-control" htmlFor="asset-columns">
-                            <span className="asset-zoom-label">
-                                <i className="bi bi-zoom-out me-2" aria-hidden="true"></i>
-                                Densidade dos cards
-                            </span>
-                            <span className="asset-zoom-slider">
-                                <span aria-hidden="true">−</span>
-                                <input
-                                    id="asset-columns"
-                                    type="range"
-                                    min="1"
-                                    max={isMobile ? 2 : 3}
-                                    step="1"
-                                    value={assetColumns}
-                                    onChange={event => setAssetColumns(Number(event.target.value))}
-                                    aria-valuetext={`${assetColumns} ${assetColumns === 1 ? 'card' : 'cards'} por linha`}
-                                />
-                                <span aria-hidden="true">+</span>
-                            </span>
-                            <span className="visually-hidden" aria-live="polite">
-                                {assetColumns} {assetColumns === 1 ? 'card' : 'cards'} por linha
-                            </span>
-                        </label>
+                {!loading && assets.length === 0 && (
+                    <div className="text-center py-5 border border-secondary rounded-4 bg-dark my-4 p-4">
+                        <i className="bi bi-wallet2 text-success" style={{ fontSize: '3rem' }}></i>
+                        <h3 className="h5 text-white fw-bold mt-3">Sua carteira está vazia</h3>
+                        <p className="text-secondary small mb-4" style={{ maxWidth: '420px', margin: '0 auto' }}>
+                            Adicione seus ativos para calcular o preço médio, projetar dividendos e acompanhar a Bola de Neve.
+                        </p>
+                        <button className="btn btn-success fw-bold px-4 py-2" onClick={() => setIsSearchModalOpen(true)}>
+                            <i className="bi bi-search me-2"></i> Buscar Novo Ativo
+                        </button>
                     </div>
                 )}
 
-                <div
-                    className="asset-cards-grid mt-3"
-                    style={{ '--asset-columns': assetColumns }}
-                >
-                    {!loading && assets.map(asset => (
-                        <AssetCard
-                            key={asset.id || asset.ticker}
-                            asset={asset}
-                            broker={broker}
-                            isGuest={!isAuthenticated}
-                            onEdit={setEditingAsset}
-                            onDelete={handleDelete}
-                            onRetry={() => refreshSingleAsset(asset.ticker)}
-                        />
-                    ))}
-                </div>
+                {!loading && assets.length > 0 && (
+                    <div
+                        className="asset-cards-grid mt-3"
+                        style={{ '--asset-columns': assetColumns }}
+                    >
+                        {assets.map(asset => (
+                            <AssetCard
+                                key={asset.id || asset.ticker}
+                                asset={asset}
+                                broker={broker}
+                                isGuest={!isAuthenticated}
+                                onEdit={setEditingAsset}
+                                onDelete={handleDelete}
+                                onRetry={() => refreshSingleAsset(asset.ticker)}
+                            />
+                        ))}
+                    </div>
+                )}
 
-                {!loading && <PromptView assets={assets} isGuest={!isAuthenticated} />}
+                {!loading && <PromptView mode="portfolio" assets={assets} isGuest={false} />}
+                    </>
+                )}
             </div>
 
             <UpdateAssetModal 
@@ -269,13 +351,13 @@ export default function Dashboard() {
                 onSave={handleSaveEdit} 
             />
             
-            {isAuthenticated && (
-                <AddAssetDrawer 
-                    onAddAsset={addAsset} 
-                    existingTickers={assets.map(a => a.ticker)} 
-                    initialTicker={radarTicker}
-                />
-            )}
+            <AddAssetDrawer
+                onAddAsset={addAsset}
+                existingTickers={assets.map(a => a.ticker)}
+                initialTicker={radarTicker}
+                openRequested={isSearchModalOpen}
+                onOpenRequestHandled={() => setIsSearchModalOpen(false)}
+            />
         </>
     );
 }

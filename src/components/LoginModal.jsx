@@ -1,21 +1,7 @@
-import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginModal() {
-  const { isAuthenticated, signInWithGoogle } = useAuth();
-  const modalRef = useRef(null);
-
-  useEffect(() => {
-    // Só mostramos o modal se NÃO estiver autenticado
-    if (!isAuthenticated && modalRef.current) {
-      // Como estamos usando Bootstrap via CDN/JS Global, chamamos a API dele
-      const modal = window.bootstrap.Modal.getOrCreateInstance(modalRef.current);
-      modal.show();
-    } else if (isAuthenticated && modalRef.current) {
-      const modal = window.bootstrap.Modal.getInstance(modalRef.current);
-      if (modal) modal.hide();
-    }
-  }, [isAuthenticated]);
+  const { signInWithGoogle } = useAuth();
 
   return (
     <div 
@@ -24,19 +10,19 @@ export default function LoginModal() {
       tabIndex="-1" 
       aria-labelledby="loginModalLabel" 
       aria-hidden="true" 
-      data-bs-backdrop="static" 
+      data-bs-backdrop="true"
       data-bs-keyboard="false"
-      ref={modalRef}
     >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content bg-dark border border-secondary shadow-lg">
           <div className="modal-header border-bottom border-secondary">
             <h5 className="modal-title fw-bold text-success" id="loginModalLabel">Notifinancia</h5>
+            <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div className="modal-body text-center p-5">
             <h3 className="fw-bold text-white mb-3">Notificações do Seu portfólio.</h3>
             
-            <p className="text-secondary mb-4">Gerencie sua carteira real de <strong>Ações e FIIs</strong>. Acesse gratuitamente para receber <strong>alertas de Preço Médio</strong> e <strong>relatórios de dividendos</strong> no seu e-mail.</p>
+            <p className="text-secondary mb-4">Gerencie sua carteira de <strong>Ações e FIIs</strong>. Acesse gratuitamente para receber <strong>relatórios diários de dividendos da B3 às 18h</strong> e alertas de preço médio por e-mail.</p>
             
             <button 
               onClick={signInWithGoogle}

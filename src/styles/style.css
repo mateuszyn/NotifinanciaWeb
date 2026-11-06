@@ -72,17 +72,76 @@ body {
     min-width: 150px; 
 }
 
+.header-brand-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    min-width: 0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.header-brand-btn.is-active {
+    color: #198754;
+}
+
+.header-brand-btn.is-disabled {
+    color: #dc3545;
+    opacity: 0.85;
+}
+
+.header-brand-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px currentColor, 0 0 14px currentColor !important;
+}
+
+.header-brand-icon {
+    position: relative;
+    flex: 0 0 auto;
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.header-brand-bell {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    font-size: 0.62rem;
+    -webkit-text-stroke: 1px #0f111a;
+}
+
+.header-brand-copy {
+    min-width: 0;
+}
+
+.header-brand-btn .title-responsive {
+    font-size: 1.05rem;
+}
+
+.header-brand-btn .subtitle-responsive {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@keyframes pulseNotification {
+    0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(220, 53, 69, 0)); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 0 6px rgba(220, 53, 69, 0.8)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(220, 53, 69, 0)); }
+}
+
+.pulse-attention {
+    animation: pulseNotification 2s infinite ease-in-out;
+}
 
 /* =========================================
    3. NOTIFICAÇÕES E ÍCONES DO TOPO
    ========================================= */
-#btn-toggle-notif i {
-    display: inline-block;
-    transition: all 0.3s ease;
-}
-
-#btn-toggle-notif:hover { transform: scale(1.1); }
-
 .notification-mail-icon {
   position: relative;
   display: inline-flex;

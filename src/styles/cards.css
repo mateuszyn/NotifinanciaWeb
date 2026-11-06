@@ -23,6 +23,68 @@
     background: rgba(17, 24, 45, 0.75);
 }
 
+.portfolio-tabs-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto 20px;
+}
+
+.portfolio-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(17, 24, 45, 0.88);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.portfolio-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 8px 16px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: #cbd5e1;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.portfolio-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.portfolio-tab:active {
+    transform: scale(0.98);
+}
+
+.portfolio-tab:focus-visible {
+    outline: 2px solid #28a745;
+    outline-offset: 2px;
+}
+
+.portfolio-tab.active {
+    border-color: rgba(40, 167, 69, 0.45);
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.24), rgba(25, 135, 84, 0.16));
+    box-shadow: inset 0 0 0 1px rgba(40, 167, 69, 0.12);
+    color: #ffffff;
+}
+
+.recommended-view {
+    width: 100%;
+}
+
 .portfolio-view-actions {
     display: flex;
     align-items: center;
@@ -58,6 +120,26 @@
     display: grid;
     grid-template-columns: repeat(var(--asset-columns, 3), minmax(0, 1fr));
     gap: 20px;
+}
+
+@media (max-width: 575.98px) {
+    .portfolio-tabs {
+        width: 100%;
+        border-radius: 16px;
+    }
+
+    .portfolio-tab {
+        flex: 1 1 50%;
+        min-width: 0;
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .portfolio-tab .badge {
+        flex-shrink: 0;
+    }
 }
 
 .asset-card-wrapper {
@@ -586,6 +668,43 @@
     color: var(--text-muted, #aaa);
 }
 
+.radar-summary {
+    border-color: rgba(13, 202, 240, 0.3);
+    background: linear-gradient(145deg, rgba(17, 24, 45, 0.98), rgba(7, 12, 24, 0.98));
+}
+
+.radar-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.radar-ticker-groups {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.radar-ticker-group-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-align: right;
+    text-transform: uppercase;
+}
+
+.radar-ticker-grid {
+    max-width: none;
+    justify-content: flex-end;
+}
+
+.radar-ticker-popover {
+    width: 190px;
+}
 
 /* =========================================
    8. RESPONSIVIDADE E ANIMAÇÕES
@@ -614,6 +733,26 @@
         max-width: 100%;
         justify-content: flex-start;
     }
+
+    .radar-summary-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .radar-ticker-groups {
+        flex-wrap: wrap;
+        gap: 14px;
+        width: 100%;
+    }
+
+    .radar-ticker-group-label {
+        text-align: left;
+    }
+
+    .radar-ticker-grid {
+        justify-content: flex-start;
+    }
+
 }
 
 

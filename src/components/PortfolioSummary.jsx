@@ -112,6 +112,12 @@ export default function PortfolioSummary({ assets }) {
                                         <div className="ticker-popover-row">
                                             <span>Hoje:</span> <strong className={dailyClass}>{dailyVal >= 0 ? '+' : ''}{dailyVal.toFixed(2)}%</strong>
                                         </div>
+                                        <div className="ticker-popover-row">
+                                            <span>DY:</span> <strong className="text-success">{asset.yieldPct > 0 ? `${Number(asset.yieldPct).toFixed(2)}%` : '—'}</strong>
+                                        </div>
+                                        <div className="ticker-popover-row">
+                                            <span>P/VP:</span> <strong>{asset.pvp ? Number(asset.pvp).toFixed(2) : '—'}</strong>
+                                        </div>
                                     </div>
                                 )}
                             </div>

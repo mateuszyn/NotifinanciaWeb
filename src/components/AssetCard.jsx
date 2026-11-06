@@ -3,11 +3,17 @@ import { BROKERS } from '../utils/brokers.js';
 import { TICKER_DATA } from '../utils/ticker-data.js'; // Importando o dicionário enriquecido com segmentos[cite: 3]
 import { getSegmentDetails } from '../utils/segment-icon.js';
 
-export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, onRetry }) {
+export default function AssetCard({
+    asset,
+    broker,
+    onEdit,
+    onDelete,
+    onRetry,
+    mode = 'portfolio',
+    onAddRecommended
+}) {
     const [isDyInfoOpen, setIsDyInfoOpen] = React.useState(false);
-    const [isPvpInfoOpen, setIsPvpInfoOpen] = React.useState(false);
     const [activeMonthKey, setActiveMonthKey] = React.useState(null);
-    const pvpInfoRef = React.useRef(null);
     const monthsContainerRef = React.useRef(null);
 
     const profitPct = asset.variacaoPm || 0;
@@ -61,11 +67,30 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         }
     };
 
+    const handleShowPvpInfo = event => {
+        event.stopPropagation();
+        window.Swal.fire({
+            title: 'Como interpretar o P/VP?',
+            html: `
+                <div class="text-start">
+                    <p><strong>Preço / Valor Patrimonial</strong> indica quanto o mercado paga em relação ao patrimônio contábil do ativo.</p>
+                    <p class="mb-1" style="color: #8fe3a7"><strong>&lt; 1,00:</strong> desconto patrimonial</p>
+                    <p class="mb-1" style="color: #6edff6"><strong>1,00 - ${isFii ? '1,05' : '2,20'}:</strong> preço justo / paridade</p>
+                    <p class="mb-0" style="color: #ffd56b"><strong>&gt; ${isFii ? '1,05' : '2,20'}:</strong> ágio sobre o patrimônio</p>
+                </div>
+            `,
+            confirmButtonText: 'Entendi',
+            confirmButtonColor: '#198754',
+            background: '#212529',
+            color: '#ffffff',
+            customClass: {
+                popup: 'border border-secondary shadow-lg rounded-4'
+            }
+        });
+    };
+
     React.useEffect(() => {
         const handleOutsideClick = (event) => {
-            if (pvpInfoRef.current && !pvpInfoRef.current.contains(event.target)) {
-                setIsPvpInfoOpen(false);
-            }
             if (monthsContainerRef.current && !monthsContainerRef.current.contains(event.target)) {
                 setActiveMonthKey(null);
             }
@@ -78,6 +103,12 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     // Cálculo da Bola de Neve (Magic Number)
     const rendaMensalPorCota = currentPrice > 0 && yieldPct > 0 ? (currentPrice * (yieldPct / 100)) / 12 : 0;
     const cotasParaBolaDeNeve = rendaMensalPorCota > 0 && currentPrice > 0 ? Math.ceil(currentPrice / rendaMensalPorCota) : 0;
+    const cotasMeta = cotasParaBolaDeNeve > 0 ? cotasParaBolaDeNeve : 1;
+    const rendaMensalBolaDeNeve = currentPrice > 0 && yieldPct > 0
+        ? (currentPrice * (yieldPct / 100) / 12) * cotasMeta
+        : 0;
+    const rendaAnualBolaDeNeve = rendaMensalBolaDeNeve * 12;
+    const custoBolaDeNeve = cotasParaBolaDeNeve * currentPrice;
     const cotasFaltantes = Math.max(0, cotasParaBolaDeNeve - quantity);
     const cotasCompradasPorMes = divMensal > 0 && currentPrice > 0 ? Number((divMensal / currentPrice).toFixed(2)) : 0;
     const cotasCompradasPorAno = divAnual > 0 && currentPrice > 0 ? Number((divAnual / currentPrice).toFixed(1)) : 0;
@@ -125,7 +156,8 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
     }, []);
 
     // Régua Inteligente de Cores de P/VP
-    const isFii = cleanTicker.endsWith('11');
+    const isFii = assetMeta.type === 'FII';
+    const useSnowballDividendSummary = mode === 'radar';
     const pvpValue = asset.pvp !== undefined && asset.pvp !== null ? Number(asset.pvp) : null;
     let pvpColorClass = 'text-secondary border-secondary';
     let pvpBadgeBg = 'rgba(255, 255, 255, 0.05)';
@@ -165,7 +197,7 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
         <div id={cardId} className="asset-card-wrapper">
             <div className={`asset-card ${borderClass}`}>
                 <div className="d-flex justify-content-between align-items-center mb-3 asset-card-header">
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-2 overflow-hidden">
                         <h4 className="m-0 fw-bold">{ticker}</h4>
                         {assetMeta.segment && (
                             <button 
@@ -176,14 +208,23 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                                 aria-label={`Informações do segmento: ${assetMeta.segment}`}
                             >
                                 <i className={`bi ${segmentInfo.icon}`}></i>
-                                <span className="d-none d-sm-inline">{assetMeta.segment.split('/')[0].trim()}</span>
+                                <span
+                                    className="d-none d-sm-inline ms-1"
+                                    style={{
+                                        maxWidth: '85px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        verticalAlign: 'middle'
+                                    }}
+                                >
+                                    {assetMeta.segment.split('/')[0].trim()}
+                                </span>
                             </button>
                         )}
                     </div>
-                    <div className="d-flex gap-3 align-items-center asset-card-actions">
-                        {isGuest ? (
-                            <span className="badge bg-secondary">Dados de Exemplo</span>
-                        ) : (
+                    <div className="d-flex gap-3 align-items-center asset-card-actions flex-shrink-0">
+                        {mode === 'radar' ? null : (
                             <span className="d-flex align-items-center gap-2">
                                 <button className="btn btn-link p-0 btn-edit edit-btn-wrapper" onClick={() => onEdit(asset)} aria-label="Editar / Aporte">
                                     <span className="edit-icon"><i className="bi bi-pencil text-primary"></i></span>
@@ -198,9 +239,23 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                 
                 <div className="row mb-3">
                     <div className="col-12">
-                        <p className="price-value mb-0">Total: R$ {(quantity * currentPrice).toFixed(2)}</p>
-                        <p className="small text-secondary fw-bold mb-1">QTD: {quantity}</p>
-                        {cotasParaBolaDeNeve > 0 && (
+                        {mode === 'radar' ? (
+                            <div className="mb-2">
+                                <span className="small text-secondary text-uppercase fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
+                                    Meta Bola de Neve
+                                </span>
+                                <p className="price-value mb-0 text-success fw-bold">R$ {custoBolaDeNeve.toFixed(2)}</p>
+                                <span className="small text-secondary" style={{ fontSize: '0.75rem' }}>
+                                    ({cotasParaBolaDeNeve} cotas para gerar 1 nova cota/mês)
+                                </span>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="price-value mb-0">Total: R$ {(quantity * currentPrice).toFixed(2)}</p>
+                                <p className="small text-secondary fw-bold mb-1">QTD: {quantity}</p>
+                            </>
+                        )}
+                        {mode !== 'radar' && cotasParaBolaDeNeve > 0 && (
                             <p className="small mb-0" style={{ fontSize: '0.72rem', color: snowballColor }}>
                                 {snowballMessage}
                             </p>
@@ -209,61 +264,46 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                 </div>
 
                 <div className="row border-top border-bottom border-secondary py-2 mb-3 text-center">
-                    <div className="col-4 border-end border-secondary px-1">
-                        <p className="price-label mb-0">P. Médio</p>
-                        <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
-                        <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
-                            ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
-                        </span>
-                    </div>
-                    <div className="col-4 border-end border-secondary px-1">
+                    {mode !== 'radar' && (
+                        <div className="col-4 border-end border-secondary px-1">
+                            <p className="price-label mb-0">P. Médio</p>
+                            <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
+                            <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                                ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
+                            </span>
+                        </div>
+                    )}
+                    <div className={`${mode === 'radar' ? 'col-6' : 'col-4'} border-end border-secondary px-1`}>
                         <p className="price-label mb-0">P. Atual</p>
-                        <p className="price-value mb-0">R$ {currentPrice.toFixed(2)}</p>
-                        <span className={`${dailyTextClass} small`} style={{ fontSize: '0.72rem' }}>
-                            ({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)
-                        </span>
+                        {mode === 'radar' ? (
+                            <p className="price-value mb-0" style={{ fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
+                                R$ {currentPrice.toFixed(2)}{' '}
+                                <span className={`${dailyTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                                    ({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)
+                                </span>
+                            </p>
+                        ) : (
+                            <>
+                                <p className="price-value mb-0">R$ {currentPrice.toFixed(2)}</p>
+                                <span className={`${dailyTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                                    ({dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%)
+                                </span>
+                            </>
+                        )}
                     </div>
-                    <div className="col-4 px-1 position-relative">
+                    <div className={`${mode === 'radar' ? 'col-6' : 'col-4'} px-1 position-relative`}>
                         <p className="price-label mb-0" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                             P/VP
-                            <span className="asset-pvp-info" ref={pvpInfoRef} style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+                            <span className="asset-pvp-info" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
                                 <button
                                     type="button"
                                     className="btn btn-link p-0 text-secondary"
                                     style={{ fontSize: '0.75rem', lineHeight: 1 }}
                                     aria-label="Informações sobre P/VP"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setIsPvpInfoOpen(prev => !prev);
-                                    }}
+                                    onClick={handleShowPvpInfo}
                                 >
                                     <i className="bi bi-info-circle-fill"></i>
                                 </button>
-                                {isPvpInfoOpen && (
-                                    <span
-                                        className="position-absolute text-start p-2 shadow-lg"
-                                        style={{
-                                            bottom: '100%',
-                                            right: '50%',
-                                            transform: 'translateX(50%)',
-                                            width: 'min(220px, calc(100vw - 32px))',
-                                            backgroundColor: '#212529',
-                                            border: '1px solid #555',
-                                            borderRadius: '8px',
-                                            fontSize: '0.72rem',
-                                            color: '#cbd5e1',
-                                            zIndex: 1250,
-                                            marginBottom: '6px'
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        <strong>Preço / Valor Patrimonial:</strong>
-                                        <p className="mb-1 mt-1">Mede quanto o mercado paga sobre o patrimônio contábil do ativo:</p>
-                                        <p className="mb-0" style={{ color: '#8fe3a7' }}><strong>&lt; 1.00:</strong> Desconto patrimonial</p>
-                                        <p className="mb-0" style={{ color: '#6edff6' }}><strong>1.00 - {isFii ? '1.05' : '2.20'}:</strong> Preço justo / paridade</p>
-                                        <p className="mb-0" style={{ color: '#ffd56b' }}><strong>&gt; {isFii ? '1.05' : '2.20'}:</strong> Ágio sobre o patrimônio</p>
-                                    </span>
-                                )}
                             </span>
                         </p>
                         <p className="price-value mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -358,17 +398,25 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                             ) : (
                                 <div className="d-flex justify-content-around">
                                     <div className="text-center pe-3 border-end border-secondary">
-                                        <p className="text-secondary dividend-label mb-0">~ Mensal</p>
-                                        <p className="dividend-amount-val mb-0 text-white">R$ {divMensal.toFixed(2)}</p>
+                                        <p className="text-secondary dividend-label mb-0">
+                                            {useSnowballDividendSummary ? '~ Mensal na Meta' : '~ Mensal'}
+                                        </p>
+                                        <p className="dividend-amount-val mb-0 text-white">
+                                            R$ {(useSnowballDividendSummary ? rendaMensalBolaDeNeve : divMensal).toFixed(2)}
+                                        </p>
                                         <p className="dividend-shares-proj mb-0" style={{ color: '#8fe3a7' }}>
-                                            + {cotasCompradasPorMes.toFixed(2)} cotas
+                                            {mode === 'radar' ? '+ 1 cota/mês' : `+ ${cotasCompradasPorMes.toFixed(2)} cotas`}
                                         </p>
                                     </div>
                                     <div className="text-center ps-3">
-                                        <p className="text-secondary dividend-label mb-0">~ Anual</p>
-                                        <p className="dividend-amount-val mb-0 text-white">R$ {divAnual.toFixed(2)}</p>
+                                        <p className="text-secondary dividend-label mb-0">
+                                            {useSnowballDividendSummary ? '~ Anual na Meta' : '~ Anual'}
+                                        </p>
+                                        <p className="dividend-amount-val mb-0 text-white">
+                                            R$ {(useSnowballDividendSummary ? rendaAnualBolaDeNeve : divAnual).toFixed(2)}
+                                        </p>
                                         <p className="dividend-shares-proj mb-0" style={{ color: '#8fe3a7' }}>
-                                            + {cotasCompradasPorAno.toFixed(2)} cotas
+                                            {mode === 'radar' ? '+ 12 cotas/ano' : `+ ${cotasCompradasPorAno.toFixed(2)} cotas`}
                                         </p>
                                     </div>
                                 </div>
@@ -454,11 +502,22 @@ export default function AssetCard({ asset, broker, isGuest, onEdit, onDelete, on
                     </details>
                 </div>
 
-                <a href={brokerInfo.appUrl || brokerInfo.webUrl} target="_blank" rel="noopener noreferrer" 
-                   className="btn w-100 d-flex align-items-center justify-content-center gap-2 asset-broker-link"
-                   style={{ backgroundColor: brokerInfo.color, color: brokerInfo.textColor, border: 'none', fontWeight: 'bold', borderRadius: '8px', height: '45px' }}>
-                    <i className="bi bi-box-arrow-up-right"></i> Operar na {brokerName}
-                </a>
+                {mode === 'radar' ? (
+                    <button
+                        type="button"
+                        className="btn btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-2"
+                        style={{ height: '45px', borderRadius: '8px' }}
+                        onClick={() => onAddRecommended?.(cleanTicker, asset)}
+                    >
+                        <i className="bi bi-plus-circle-fill"></i> Adicionar à Carteira
+                    </button>
+                ) : (
+                    <a href={brokerInfo.appUrl || brokerInfo.webUrl} target="_blank" rel="noopener noreferrer"
+                       className="btn w-100 d-flex align-items-center justify-content-center gap-2 asset-broker-link"
+                       style={{ backgroundColor: brokerInfo.color, color: brokerInfo.textColor, border: 'none', fontWeight: 'bold', borderRadius: '8px', height: '45px' }}>
+                        <i className="bi bi-box-arrow-up-right"></i> Operar na {brokerName}
+                    </a>
+                )}
             </div>
         </div>
     );

@@ -2,8 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TickerDictionary } from '../utils/ticker-dictionary.js';
 import { getSegmentIcon } from '../utils/segment-icon.js';
 import { AssetService } from '../services/asset-service.js';
+import { useAuth } from '../context/AuthContext';
 
-export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initialTicker = '' }) {
+export default function AddAssetDrawer({
+    onAddAsset,
+    existingTickers = [],
+    initialTicker = '',
+    openRequested = false,
+    onOpenRequestHandled
+}) {
+    const { isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [ticker, setTicker] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -11,6 +19,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
     
     const [suggestions, setSuggestions] = useState([]);
     const [snowballInfo, setSnowballInfo] = useState(null);
+    const [marketData, setMarketData] = useState(null);
     const [isLoadingPrice, setIsLoadingPrice] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [validatedTickers, setValidatedTickers] = useState(new Set());
@@ -24,6 +33,12 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
         setIsOpen(true);
     }, [initialTicker]);
 
+    useEffect(() => {
+        if (!openRequested) return;
+        setIsOpen(true);
+        onOpenRequestHandled?.();
+    }, [openRequested, onOpenRequestHandled]);
+
     // Recalcula o custo da bola de neve sempre que mudar o P. Médio ou o yield detectado
     const priceNum = parseFloat(averagePrice) || 0;
     const snowballCost = (snowballInfo && priceNum > 0) ? (snowballInfo * priceNum).toFixed(2) : null;
@@ -33,8 +48,9 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
     // Filter suggestions when ticker changes
     useEffect(() => {
         const query = ticker.trim().toUpperCase();
+        setMarketData(null);
+        setSnowballInfo(null);
         if (!query) {
-            setSnowballInfo(null);
             setSuggestions([]);
             return;
         }
@@ -82,6 +98,7 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
             const data = await AssetService.getPrice(cleanTicker);
             if (!data || data.price <= 0) throw new Error('Não foi possível obter o valor atual.');
 
+            setMarketData(data);
             setAveragePrice(data.price.toFixed(2));
             setValidatedTickers(prev => new Set(prev).add(cleanTicker));
 
@@ -126,7 +143,9 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
         try {
             if (!validatedTickers.has(cleanTicker)) {
                 window.Swal.update({ title: 'Buscando e validando ativo...' });
-                const isValid = await AssetService.validateTicker(cleanTicker);
+                const isValid = isAuthenticated
+                    ? await AssetService.validateTicker(cleanTicker)
+                    : TickerDictionary.list.includes(cleanTicker);
                 if (!isValid) {
                     window.Swal.fire({ icon: 'error', title: 'Erro', text: `O ticker "${cleanTicker}" não foi encontrado na B3.` });
                     setIsSubmitting(false);
@@ -136,13 +155,21 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
                 window.Swal.update({ title: 'Salvando na carteira...' });
             }
 
-            const result = await onAddAsset({ ticker: cleanTicker, quantity: qtyValue, averagePrice: priceValue });
+            const result = await onAddAsset({
+                ticker: cleanTicker,
+                quantity: qtyValue,
+                averagePrice: priceValue,
+                currentPrice: priceNum > 0 ? priceNum : priceValue,
+                yieldPct: marketData?.yieldPct || (snowballInfo > 0 ? 1200 / snowballInfo : 0),
+                pvp: marketData?.pvp || null
+            });
 
             // Limpa form e fecha gaveta
             setTicker('');
             setQuantity('');
             setAveragePrice('');
             setSnowballInfo(null);
+            setMarketData(null);
             setIsOpen(false);
             
             window.Swal.fire({
@@ -171,8 +198,8 @@ export default function AddAssetDrawer({ onAddAsset, existingTickers = [], initi
                     aria-expanded={isOpen}
                     aria-label={isOpen ? "Fechar gaveta de novo ativo" : "Abrir gaveta de novo ativo"}
                 >
-                    <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-plus-lg'} me-1`} aria-hidden="true"></i>
-                    {isOpen ? 'FECHAR' : 'NOVO ATIVO'}
+                    <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-search'} me-2`} aria-hidden="true"></i>
+                    {isOpen ? 'FECHAR' : 'Buscar Novo Ativo'}
                 </button>
             </div>
             

@@ -2,6 +2,17 @@ import { supabase } from '../infrastructure/supabase-client.js';
 import { Asset } from '../models/asset.js';
 import { TICKER_DATA } from '../utils/ticker-data.js';
 
+const RECOMMENDED_CACHE_MAX_AGE_MS = 18 * 60 * 60 * 1000;
+
+function isRecommendedCacheFresh(timestamp, now = new Date()) {
+    if (!timestamp) return false;
+    const cachedAt = new Date(timestamp);
+    if (!Number.isFinite(cachedAt.getTime()) || cachedAt > now) return false;
+
+    return cachedAt.toDateString() === now.toDateString()
+        || now.getTime() - cachedAt.getTime() <= RECOMMENDED_CACHE_MAX_AGE_MS;
+}
+
 export const AssetService = {
     // --- BLINDAGEM JWT ---
     async _getAuthHeaders() {
@@ -39,6 +50,82 @@ export const AssetService = {
             
             return asset;
         });
+    },
+
+    async getRecommendedFromCache() {
+        const { data, error } = await supabase
+            .from('recommended_cache')
+            .select('*')
+            .order('type', { ascending: true });
+
+        if (error) throw error;
+        if (!Array.isArray(data) || data.length === 0) return [];
+
+        const now = new Date();
+        const freshRows = data.filter(row => isRecommendedCacheFresh(
+            row.updated_at ?? row.created_at ?? row.timestamp,
+            now
+        ));
+        if (freshRows.length === 0) return [];
+
+        const latestTimestamp = Math.max(...freshRows.map(row => new Date(
+            row.updated_at ?? row.created_at ?? row.timestamp
+        ).getTime()));
+        const latestBatch = freshRows.filter(row => new Date(
+            row.updated_at ?? row.created_at ?? row.timestamp
+        ).getTime() === latestTimestamp);
+        if (latestBatch.length !== 10) return [];
+
+        return latestBatch.map(row => {
+            const paidMonths = row.paid_months ?? row.paidMonths ?? [];
+            const marketData = {
+                price: row.price ?? row.current_price ?? null,
+                yieldpct: row.yield_pct ?? row.yieldPct ?? 0,
+                priceToBook: row.price_to_book ?? row.priceToBook ?? null,
+                changePercent: row.change_percent ?? row.changePercent ?? null,
+                paidMonths: Array.isArray(paidMonths) ? paidMonths : []
+            };
+
+            return {
+                ticker: row.ticker,
+                name: row.name ?? TICKER_DATA[row.ticker]?.name ?? row.ticker,
+                type: row.type,
+                sector: row.category ?? row.sector ?? TICKER_DATA[row.ticker?.replace(/\.SA$/i, '').toUpperCase()]?.segment ?? 'Outros',
+                strategy: row.strategy ?? undefined,
+                score: Number(row.score) || 0,
+                marketData
+            };
+        });
+    },
+
+    async saveRecommendedCache(assets) {
+        const timestamp = new Date().toISOString();
+        const rows = assets.map(asset => {
+            const marketData = asset.marketData ?? {};
+            return {
+                ticker: asset.ticker,
+                name: asset.name ?? TICKER_DATA[asset.ticker]?.name ?? asset.ticker,
+                type: asset.type ?? TICKER_DATA[asset.ticker]?.type ?? 'Ação',
+                category: asset.sector ?? asset.category ?? 'Geral',
+                strategy: asset.strategy ?? null,
+                score: Number(asset.score) || 0,
+                price: marketData.price ?? marketData.regularMarketPrice ?? null,
+                yield_pct: marketData.yieldpct ?? marketData.yieldPct ?? marketData.dividendYield ?? 0,
+                price_to_book: marketData.priceToBook ?? marketData.price_to_book ?? null,
+                change_percent: marketData.changePercent ?? marketData.regularMarketChangePercent ?? null,
+                paid_months: marketData.paidMonths ?? marketData.paid_months ?? [],
+                updated_at: timestamp
+            };
+        });
+
+        if (rows.length !== 10) {
+            throw new Error(`O cache de recomendações deve conter 10 ativos; recebeu ${rows.length}.`);
+        }
+
+        const { error } = await supabase
+            .from('recommended_cache')
+            .upsert(rows, { onConflict: 'ticker' });
+        if (error) throw error;
     },
 
     calculatePortfolioSummary(assets = []) {
@@ -177,10 +264,11 @@ export const AssetService = {
             return {
                 price: Number(res?.price || res?.regularMarketPrice || 0),
                 changePercent: Number(res?.changePercent || res?.regularMarketChangePercent || 0),
-                yieldPct: Number(res?.yieldpct || res?.yieldPct || res?.dividendYield || res?.yield || 0)
+                yieldPct: Number(res?.yieldpct || res?.yieldPct || res?.dividendYield || res?.yield || 0),
+                pvp: Number(res?.priceToBook || res?.price_to_book || res?.pvp || 0) || null
             };
         } catch (error) {
-            return { price: 0, changePercent: 0, yieldPct: 0 };
+            return { price: 0, changePercent: 0, yieldPct: 0, pvp: null };
         }
     },
 
