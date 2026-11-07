@@ -107,7 +107,6 @@ export const AssetService = {
                 name: asset.name ?? TICKER_DATA[asset.ticker]?.name ?? asset.ticker,
                 type: asset.type ?? TICKER_DATA[asset.ticker]?.type ?? 'Ação',
                 category: asset.sector ?? asset.category ?? 'Geral',
-                strategy: asset.strategy ?? null,
                 score: Number(asset.score) || 0,
                 price: marketData.price ?? marketData.regularMarketPrice ?? null,
                 yield_pct: marketData.yieldpct ?? marketData.yieldPct ?? marketData.dividendYield ?? 0,

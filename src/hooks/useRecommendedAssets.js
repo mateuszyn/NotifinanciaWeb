@@ -73,24 +73,20 @@ export function useRecommendedAssets() {
         if (currentRequestId !== requestId.current) return;
 
         setRecommendedAssets(rankedAssets);
-        const persistenceErrors = [];
 
         try {
             await AssetService.saveRecommendedCache(rankedAssets);
         } catch (cacheError) {
-            console.warn('Não foi possível salvar as recomendações no Supabase:', cacheError);
-            persistenceErrors.push(`Supabase: ${cacheError.message}`);
+            console.warn(
+                'As recomendações foram carregadas, mas não foi possível salvar o cache público no Supabase. Confira se as colunas de recommended_cache correspondem ao payload.',
+                cacheError
+            );
         }
 
         try {
             saveLocalCache(rankedAssets, payload.results);
         } catch (storageError) {
             console.warn('Não foi possível salvar as recomendações no localStorage:', storageError);
-            persistenceErrors.push(`localStorage: ${storageError.message}`);
-        }
-
-        if (persistenceErrors.length && currentRequestId === requestId.current) {
-            setError(new Error(`As recomendações foram carregadas, mas o cache não foi atualizado (${persistenceErrors.join('; ')}).`));
         }
     }, [saveLocalCache]);
 
@@ -105,7 +101,6 @@ export function useRecommendedAssets() {
                     saveLocalCache(cachedAssets);
                 } catch (storageError) {
                     console.warn('Não foi possível atualizar o localStorage com o cache Supabase:', storageError);
-                    setError(storageError);
                 }
                 return;
             }
