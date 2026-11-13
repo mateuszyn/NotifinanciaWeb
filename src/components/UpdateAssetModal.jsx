@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { TICKER_DATA } from '../utils/ticker-data.js';
+import { createFiiProfitTaxAlert } from '../utils/fii-tax-alert.js';
 
 export default function UpdateAssetModal({ asset, onClose, onSave }) {
     const [quantity, setQuantity] = useState(0);
@@ -22,9 +24,28 @@ export default function UpdateAssetModal({ asset, onClose, onSave }) {
         setAveragePrice(prev => Math.max(0, prev + delta));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSave(asset.id, { quantity, averagePrice });
+        const newQuantity = Number(quantity);
+        const currentQuantity = Number(asset.quantity) || 0;
+        const cleanTicker = String(asset.ticker || '').replace(/\.SA$/i, '').toUpperCase();
+        const isFii = asset.type === 'FII' || TICKER_DATA[cleanTicker]?.type === 'FII';
+        const soldQuantity = currentQuantity - newQuantity;
+        const averagePriceAtSale = Number(asset.averagePrice) || 0;
+        const currentPrice = Number(asset.currentPrice) || 0;
+        const profit = (currentPrice - averagePriceAtSale) * soldQuantity;
+
+        if (isFii && soldQuantity > 0 && profit > 0) {
+            const result = await window.Swal.fire(createFiiProfitTaxAlert({
+                soldQuantity,
+                profit,
+                confirmButtonText: 'Entendi, salvar redução',
+                cancelButtonText: 'Revisar edição'
+            }));
+            if (!result.isConfirmed) return;
+        }
+
+        await onSave(asset.id, { quantity: newQuantity, averagePrice: Number(averagePrice) });
     };
 
     return (
@@ -40,6 +61,7 @@ export default function UpdateAssetModal({ asset, onClose, onSave }) {
                             type="number"
                             className="form-control bg-black text-white border-secondary"
                             required
+                            min="0"
                             step="any"
                             value={quantity}
                             onChange={(e) => setQuantity(Number(e.target.value))}

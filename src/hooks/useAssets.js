@@ -69,9 +69,90 @@ export function useAssets() {
             setLoading(true);
             try {
                 if (!isAuthenticated) {
-                    setRawAssets(readGuestAssets());
+                    const guestAssets = readGuestAssets().map(asset => {
+                        const averagePrice = Number(asset.averagePrice) || 0;
+                        const currentPrice = Number(asset.currentPrice) || averagePrice;
+                        const quantity = Number(asset.quantity) || 0;
+                        const yieldPct = Number(asset.yieldPct) || 0;
+
+                        return {
+                            ...asset,
+                            quantity,
+                            averagePrice,
+                            currentPrice,
+                            variacaoPm: averagePrice > 0
+                                ? ((currentPrice / averagePrice) - 1) * 100
+                                : 0,
+                            totalValue: quantity * currentPrice,
+                            divAnual: currentPrice * (yieldPct / 100) * quantity,
+                            divMensal: currentPrice * (yieldPct / 100) * quantity / 12
+                        };
+                    });
+                    setRawAssets(guestAssets);
                     setSortBy(readGuestPreference(GUEST_SORT_KEY, 'pm_asc'));
                     setBroker(readGuestPreference(GUEST_BROKER_KEY, 'Nubank'));
+
+                    if (guestAssets.length > 0) {
+                        const tickers = guestAssets.map(asset => (
+                            `${String(asset.ticker).replace(/\.SA$/i, '')}.SA`
+                        ));
+                        AssetService.getMarketPrices(tickers).then(data => {
+                            const marketResults = data.results || {};
+                            setRawAssets(previousAssets => {
+                                const updatedAssets = previousAssets.map(asset => {
+                                    const cleanTicker = String(asset.ticker).replace(/\.SA$/i, '').toUpperCase();
+                                    const marketData = Array.isArray(marketResults)
+                                        ? marketResults.find(result => (
+                                            String(result?.symbol || '').toUpperCase() === cleanTicker
+                                            || String(result?.symbol || '').toUpperCase() === `${cleanTicker}.SA`
+                                        )) || {}
+                                        : marketResults[`${cleanTicker}.SA`] || marketResults[cleanTicker] || {};
+                                    const marketPrice = Number(
+                                        marketData.price ?? marketData.regularMarketPrice
+                                    ) || 0;
+                                    const currentPrice = marketPrice > 0
+                                        ? marketPrice
+                                        : Number(asset.currentPrice) || Number(asset.averagePrice) || 0;
+                                    const averagePrice = Number(asset.averagePrice) || 0;
+                                    const quantity = Number(asset.quantity) || 0;
+                                    const yieldPct = marketPrice > 0
+                                        ? Number(marketData.yieldpct ?? marketData.yieldPct ?? marketData.yield ?? asset.yieldPct) || 0
+                                        : Number(asset.yieldPct) || 0;
+
+                                    return {
+                                        ...asset,
+                                        averagePrice,
+                                        currentPrice,
+                                        dailyChange: marketPrice > 0
+                                            ? Number(marketData.changePercent ?? marketData.regularMarketChangePercent) || 0
+                                            : Number(asset.dailyChange) || 0,
+                                        yieldPct,
+                                        pvp: marketData.priceToBook ?? marketData.price_to_book ?? asset.pvp ?? null,
+                                        paidMonths: Array.isArray(marketData.paidMonths)
+                                            ? marketData.paidMonths
+                                            : asset.paidMonths || [],
+                                        paidDividends: Array.isArray(marketData.paidDividends)
+                                            ? marketData.paidDividends
+                                            : asset.paidDividends || [],
+                                        variacaoPm: averagePrice > 0
+                                            ? ((currentPrice / averagePrice) - 1) * 100
+                                            : 0,
+                                        totalValue: quantity * currentPrice,
+                                        divAnual: currentPrice * (yieldPct / 100) * quantity,
+                                        divMensal: currentPrice * (yieldPct / 100) * quantity / 12
+                                    };
+                                });
+                                try {
+                                    saveGuestAssets(updatedAssets);
+                                } catch (error) {
+                                    console.error('Não foi possível salvar as cotações na carteira local.', error);
+                                }
+                                return updatedAssets;
+                            });
+                        }).catch(error => {
+                            console.error('Não foi possível atualizar as cotações da carteira local.', error);
+                        });
+                    }
                 } else {
                     // Busca perfil do usuário
                     const { data: prof } = await supabase

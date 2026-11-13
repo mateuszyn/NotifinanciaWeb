@@ -7,6 +7,7 @@ class PaidDividend(BaseModel):
     year: int
     month: int
     amount: float
+    dateCom: Optional[str] = None
 
 
 class PingResponse(BaseModel):

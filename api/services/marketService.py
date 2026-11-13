@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
 import urllib3
@@ -152,7 +152,7 @@ def get_market_data(symbols: List[str]) -> Dict[str, MarketDataResult]:
         change_percent: Optional[float] = None
         yieldpct = 0.0
         paid_months: List[int] = []
-        paid_dividends: Dict[Tuple[int, int], float] = {}
+        paid_dividends: List[Dict[str, Any]] = []
         pvp_value: Optional[float] = _PVP_CACHE.get(clean_base_ticker)
 
         try:
@@ -202,8 +202,12 @@ def get_market_data(symbols: List[str]) -> Dict[str, MarketDataResult]:
                     div_date = datetime.fromtimestamp(ts, timezone.utc)
                     # Histórico de até 2 anos para preencher a recorrência dos meses pagos (Div + JCP)
                     paid_months_set.add(div_date.month)
-                    month_key = (div_date.year, div_date.month)
-                    paid_dividends[month_key] = paid_dividends.get(month_key, 0.0) + amount
+                    paid_dividends.append({
+                        "year": div_date.year,
+                        "month": div_date.month,
+                        "amount": amount,
+                        "dateCom": div_date.strftime("%Y-%m-%d"),
+                    })
 
                     # Soma para o cálculo de Yield Anual estritamente os últimos 365 dias
                     if ts >= one_year_ago_timestamp:
@@ -222,10 +226,7 @@ def get_market_data(symbols: List[str]) -> Dict[str, MarketDataResult]:
                 changePercent=change_percent,
                 yieldpct=yieldpct,
                 paidMonths=paid_months,
-                paidDividends=[
-                    {"year": year, "month": month, "amount": amount}
-                    for (year, month), amount in sorted(paid_dividends.items())
-                ],
+                paidDividends=paid_dividends,
                 priceToBook=pvp_value,
             )
 

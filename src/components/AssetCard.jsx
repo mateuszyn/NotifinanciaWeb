@@ -34,8 +34,10 @@ export default function AssetCard({
     const currentPrice = Number(asset.currentPrice) || 0;
     const quantity = Number(asset.quantity) || 0;
     const paidMonths = asset.paidMonths || asset.paid_months || [];
-    const paidDividends = Array.isArray(asset.paidDividends || asset.paid_dividends)
-        ? (asset.paidDividends || asset.paid_dividends)
+    const paidDividendEvents = asset.paidDividends || asset.paid_dividends;
+    const hasDividendEventHistory = Array.isArray(paidDividendEvents);
+    const paidDividends = hasDividendEventHistory
+        ? paidDividendEvents
         : [];
 
     // Metadados do ativo (Nome e Segmento do dicionário)[cite: 3]
@@ -110,11 +112,20 @@ export default function AssetCard({
     };
 
     const handleMonthClick = item => {
-        const monthPayment = paidDividends.find(payment => (
+        const monthEvents = paidDividends.filter(payment => (
             Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
         ));
-        const amountPerShare = Number(monthPayment?.amount);
-        const hasPayment = Number.isFinite(amountPerShare) && amountPerShare > 0;
+        const hasPayment = (
+            hasDividendEventHistory && monthEvents.length > 0
+        ) || paidMonths.includes(item.monthIndex);
+        const amountPerShare = monthEvents.reduce(
+            (total, event) => total + (Number(event.amount) || 0),
+            0
+        );
+        const dataComDates = monthEvents
+            .map(event => event.dateCom)
+            .filter(Boolean)
+            .map(date => new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR'));
         const searchUrl = googleSearchUrl(
             `${cleanTicker} data com dividendos ${item.full} ${item.year}`
         );
@@ -124,20 +135,34 @@ export default function AssetCard({
 
         window.Swal.fire({
             title: `${escapeHtml(cleanTicker)} • ${item.full} ${item.year}`,
-            html: hasPayment
+            html: hasPayment && monthEvents.length > 0
                 ? `
                     <div class="text-start">
                         <p class="mb-2">Total histórico pago por cota: <strong class="text-success">R$ ${amountPerShare.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong></p>
                         <p class="mb-2">Estimativa para ${quantity} cotas atuais: <strong class="text-white">R$ ${(amountPerShare * quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>
+                        <p class="small text-secondary">${dataComDates.length > 0
+                            ? `Data-Com registrada no histórico: ${dataComDates.join(', ')}.`
+                            : 'O evento detalhado não informa a Data-Com.'}</p>
                         <p class="small text-secondary">${dataComRule} Confirme sempre a data oficial no comunicado do emissor.</p>
                         <a class="btn btn-outline-info btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
                             <i class="bi bi-google me-1"></i> Buscar Data-Com oficial
                         </a>
                     </div>
                 `
+                : hasPayment
+                    ? `
+                        <div class="text-start">
+                            <p>Este mês tem distribuição histórica registrada na B3. Não há evento unitário disponível na API.</p>
+                            <p class="mb-2">Estimativa mensal: <strong class="text-success">~ R$ ${rendaMensalPorCota.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> por cota, ou <strong class="text-white">~ R$ ${(rendaMensalPorCota * quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> para ${quantity} cotas atuais.</p>
+                            <p class="small text-secondary">${dataComRule} Consulte o link para checar a Data-Com oficial.</p>
+                            <a class="btn btn-outline-info btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
+                                <i class="bi bi-google me-1"></i> Buscar Data-Com oficial
+                            </a>
+                        </div>
+                    `
                 : `
                     <div class="text-start">
-                        <p>Não houve distribuição registrada neste mês no histórico disponível.</p>
+                        <p>Não há registro de distribuição de proventos para este mês no histórico disponível.</p>
                         <a class="btn btn-outline-info btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
                             <i class="bi bi-google me-1"></i> Consultar proventos e Data-Com
                         </a>
@@ -480,9 +505,9 @@ export default function AssetCard({
                             {isAuthenticated ? (
                                 <div className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container">
                                     {rollingMonths.map(item => {
-                                        const hasPaid = paidDividends.some(payment => (
+                                        const hasPaid = (hasDividendEventHistory && paidDividends.some(payment => (
                                             Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
-                                        )) || (!paidDividends.length && paidMonths.includes(item.monthIndex));
+                                        ))) || paidMonths.includes(item.monthIndex);
                                         const boxBg = hasPaid ? '#28a745' : '#212529';
                                         const textColor = hasPaid ? '#ffffff' : '#555e68';
                                         const monthKey = `${item.monthIndex}-${item.year}`;

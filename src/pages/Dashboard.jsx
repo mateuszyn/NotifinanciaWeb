@@ -12,9 +12,10 @@ import PromptView from '../components/PromptView';
 import Header from '../components/Header';
 import UpdateAssetModal from '../components/UpdateAssetModal';
 import AddAssetDrawer from '../components/AddAssetDrawer';
+import { createFiiProfitTaxAlert } from '../utils/fii-tax-alert.js';
 
 export default function Dashboard() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, signInWithGoogle } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(() => (
@@ -66,17 +67,13 @@ export default function Dashboard() {
             return;
         }
 
-        const dividendDetails = Array.from(document.querySelectorAll('.asset-dividends-details'))
-            .map(details => ({ details, open: details.open }));
-
         try {
-            document.querySelectorAll('.dropdown-menu.show, .popover.show, .dropdown-toggle.show')
+            document.querySelectorAll('.dropdown-menu.show, .popover.show, .tooltip.show, .dropdown-toggle.show')
                 .forEach(element => element.classList.remove('show'));
             document.querySelectorAll('details.user-menu[open]')
                 .forEach(menu => { menu.open = false; });
 
             document.body.classList.add('capturing-screenshot');
-            dividendDetails.forEach(({ details }) => { details.open = true; });
             await new Promise(resolve => window.setTimeout(resolve, 200));
 
             const captureTarget = document.querySelector('.container.mt-4.mb-5.pb-5');
@@ -102,7 +99,6 @@ export default function Dashboard() {
                 text: error.message || 'Tente novamente em alguns instantes.'
             });
         } finally {
-            dividendDetails.forEach(({ details, open }) => { details.open = open; });
             document.body.classList.remove('capturing-screenshot');
         }
     };
@@ -229,40 +225,22 @@ export default function Dashboard() {
 
     const handleDelete = (asset) => {
         const cleanTicker = asset.ticker.replace(/\.SA$/i, '').toUpperCase();
-        const isFII = TICKER_DATA[cleanTicker]?.type === 'FII';
+        const isFII = asset.type === 'FII' || TICKER_DATA[cleanTicker]?.type === 'FII';
         const lucro = (asset.currentPrice - asset.averagePrice) * asset.quantity;
         const temLucro = lucro > 0;
         const temPrejuizo = lucro < 0;
 
-        const getLastBusinessDay = () => {
-            const today = new Date();
-            const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-            let dayOfWeek = nextMonth.getDay();
-            if (dayOfWeek === 0) nextMonth.setDate(nextMonth.getDate() - 2);
-            else if (dayOfWeek === 6) nextMonth.setDate(nextMonth.getDate() - 1);
-            return `${String(nextMonth.getDate()).padStart(2, '0')}/${String(nextMonth.getMonth() + 1).padStart(2, '0')}/${nextMonth.getFullYear()}`;
-        };
-
         let alertConfig;
 
         if (isFII && temLucro) {
-            const imposto = lucro * 0.20;
-            alertConfig = {
-                title: 'Atenção: Imposto Devido',
-                icon: 'warning',
-                html: `
-                    <div class="mb-3">
-                        Lucro apurado: <b>R$ ${lucro.toFixed(2).replace('.', ',')}</b><br>
-                        Imposto a pagar (20%): <b><span class="text-danger">R$ ${imposto.toFixed(2).replace('.', ',')}</span></b>
-                    </div>
-                    <div class="text-start">
-                        <p class="small text-secondary mb-2"><b>1.</b> Efetue a venda na sua corretora.</p>
-                        <p class="small text-secondary mb-1"><b>2.</b> Acesse o SicalcWeb e gere o DARF (cód. 6015) até <b>${getLastBusinessDay()}</b>.</p>
-                    </div>
-                `,
-                showCloseButton: true, allowOutsideClick: false, showCancelButton: true,
-                confirmButtonColor: '#dc3545', confirmButtonText: 'Sim, remover da carteira', cancelButtonText: 'Cancelar'
-            };
+            alertConfig = createFiiProfitTaxAlert({
+                soldQuantity: quantity,
+                profit: lucro,
+                confirmButtonText: 'Sim, remover da carteira',
+                cancelButtonText: 'Cancelar',
+                showCloseButton: true,
+                allowOutsideClick: false
+            });
         } else if (isFII && temPrejuizo) {
             alertConfig = {
                 title: 'Venda com Prejuízo (Sem Imposto)',
@@ -319,9 +297,15 @@ export default function Dashboard() {
                 />
 
                 {activeTab === 'portfolio' && !isAuthenticated && (
-                    <div className="alert alert-info d-flex align-items-center gap-2" role="status">
-                        <i className="bi bi-info-circle-fill" aria-hidden="true"></i>
-                        <span><strong>Carteira Provisória Local:</strong> seus ativos e ajustes ficam salvos neste dispositivo.</span>
+                    <div className="guest-portfolio-banner alert alert-info d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="status">
+                        <span>
+                            <i className="bi bi-info-circle-fill me-2" aria-hidden="true"></i>
+                            <strong>Carteira Provisória Local:</strong> seus dados ficam salvos apenas neste navegador.
+                        </span>
+                        <button type="button" className="btn btn-success fw-bold flex-shrink-0" onClick={signInWithGoogle}>
+                            <i className="bi bi-google me-2" aria-hidden="true"></i>
+                            Salvar Carteira com Google
+                        </button>
                     </div>
                 )}
 

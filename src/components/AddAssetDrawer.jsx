@@ -99,7 +99,9 @@ export default function AddAssetDrawer({
             if (!data || data.price <= 0) throw new Error('Não foi possível obter o valor atual.');
 
             setMarketData(data);
-            setAveragePrice(data.price.toFixed(2));
+            setAveragePrice(current => (
+                isAuthenticated || !current ? data.price.toFixed(2) : current
+            ));
             setValidatedTickers(prev => new Set(prev).add(cleanTicker));
 
             const yieldAnual = Number(data.yieldPct || 0);

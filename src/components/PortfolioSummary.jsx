@@ -98,6 +98,12 @@ export default function PortfolioSummary({ assets, isAuthenticated: isAuthentica
         });
     };
 
+    const portfolioSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        `analise de dividendos e carteira B3: ${assets
+            .map(asset => String(asset.ticker || '').replace(/\.SA$/i, ''))
+            .join(' ')}`
+    )}`;
+
     return (
         <section className={`portfolio-summary ${borderClass} mb-4`} aria-label="Resumo consolidado da carteira">
             <div className="portfolio-summary-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -202,6 +208,16 @@ export default function PortfolioSummary({ assets, isAuthenticated: isAuthentica
                     </button>
                 </div>
             </div>
+            <a
+                className="btn btn-link btn-sm text-info text-decoration-none mt-2 p-0"
+                href={portfolioSearchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <i className="bi bi-google me-1" aria-hidden="true"></i>
+                <i className="bi bi-stars me-1" aria-hidden="true"></i>
+                Analisar Carteira com IA no Google
+            </a>
         </section>
     );
 }

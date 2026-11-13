@@ -929,6 +929,26 @@ body.capturing-screenshot .asset-dividends-details[open] > .asset-dividends-cont
     display: block !important;
 }
 
+body.capturing-screenshot .asset-dividends-details:not([open]) > .asset-dividends-content {
+    display: none !important;
+}
+
+body.capturing-screenshot .months-grid-container {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+body.capturing-screenshot .month-box {
+    flex: 0 0 calc((100% - 20px) / 6);
+    max-width: calc((100% - 20px) / 6);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
 body.capturing-screenshot .asset-card {
     break-inside: avoid;
 }
