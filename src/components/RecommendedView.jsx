@@ -20,7 +20,8 @@ function toCardAsset(recommendation) {
         divAnual: currentPrice * (yieldPct / 100),
         divMensal: currentPrice * (yieldPct / 100) / 12,
         pvp: data.priceToBook ?? data.price_to_book ?? null,
-        paidMonths: data.paidMonths ?? data.paid_months ?? []
+        paidMonths: data.paidMonths ?? data.paid_months ?? [],
+        paidDividends: data.paidDividends ?? data.paid_dividends ?? []
     };
 }
 
@@ -31,7 +32,9 @@ export default function RecommendedView({
     loading,
     error,
     refresh,
-    toolbar
+    toolbar,
+    existingTickers = [],
+    onGoToPortfolio
 }) {
     const [assetToAdd, setAssetToAdd] = useState(null);
     const [isAcoesOpen, setIsAcoesOpen] = useState(true);
@@ -171,6 +174,8 @@ export default function RecommendedView({
                 asset={assetToAdd}
                 onClose={() => setAssetToAdd(null)}
                 onSave={onAddAsset}
+                existingTickers={existingTickers}
+                onGoToPortfolio={onGoToPortfolio}
             />
         </section>
     );

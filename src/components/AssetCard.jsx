@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { BROKERS } from '../utils/brokers.js';
 import { TICKER_DATA } from '../utils/ticker-data.js'; // Importando o dicionário enriquecido com segmentos[cite: 3]
 import { getSegmentDetails } from '../utils/segment-icon.js';
@@ -12,9 +13,7 @@ export default function AssetCard({
     mode = 'portfolio',
     onAddRecommended
 }) {
-    const [isDyInfoOpen, setIsDyInfoOpen] = React.useState(false);
-    const [activeMonthKey, setActiveMonthKey] = React.useState(null);
-    const monthsContainerRef = React.useRef(null);
+    const { isAuthenticated, signInWithGoogle } = useAuth();
 
     const profitPct = asset.variacaoPm || 0;
     const dailyChange = asset.dailyChange || 0;
@@ -35,11 +34,27 @@ export default function AssetCard({
     const currentPrice = Number(asset.currentPrice) || 0;
     const quantity = Number(asset.quantity) || 0;
     const paidMonths = asset.paidMonths || asset.paid_months || [];
+    const paidDividends = Array.isArray(asset.paidDividends || asset.paid_dividends)
+        ? (asset.paidDividends || asset.paid_dividends)
+        : [];
 
     // Metadados do ativo (Nome e Segmento do dicionário)[cite: 3]
     const cleanTicker = ticker ? ticker.toUpperCase().replace(/\.SA$/i, '').trim() : '';
-    const assetMeta = TICKER_DATA[cleanTicker] || { name: ticker, segment: 'Geral', type: 'Ação' };
+    const assetMeta = TICKER_DATA[cleanTicker] || {
+        name: asset.name || ticker,
+        segment: 'Geral',
+        type: asset.type || 'Ação'
+    };
     const segmentInfo = getSegmentDetails(assetMeta.segment);
+    const corporateName = asset.name || assetMeta.name || ticker;
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[character]);
+    const googleSearchUrl = query => `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 
     const handleShowSegmentModal = (e) => {
         e.stopPropagation();
@@ -48,12 +63,16 @@ export default function AssetCard({
                 title: `<i class="bi ${segmentInfo.icon} text-primary me-2"></i>${segmentInfo.title}`,
                 html: `
                     <div class="text-start mt-2 mb-1">
+                        <p class="mb-2 text-white fw-bold">${escapeHtml(corporateName)} (${escapeHtml(cleanTicker)})</p>
                         <p class="mb-2" style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.5;">
-                            ${segmentInfo.description}
+                            ${escapeHtml(segmentInfo.description)}
                         </p>
                         <div class="p-2 rounded bg-black border border-secondary text-secondary mt-3" style="font-size: 0.78rem;">
-                            <span class="text-white fw-bold">Atuação:</span> ${assetMeta.segment} (${assetMeta.type || 'Ativo'})
+                            <span class="text-white fw-bold">Atuação:</span> ${escapeHtml(assetMeta.segment)} (${escapeHtml(assetMeta.type || 'Ativo')})
                         </div>
+                        <a class="btn btn-outline-info btn-sm mt-3" href="${googleSearchUrl(`${cleanTicker} relatório gerencial canal RI`)}" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-search me-1"></i> Pesquisar relatório gerencial e canal de RI
+                        </a>
                     </div>
                 `,
                 confirmButtonColor: '#0d6efd',
@@ -65,6 +84,72 @@ export default function AssetCard({
                 }
             });
         }
+    };
+
+    const handleShowDyInfo = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.Swal.fire({
+            title: 'Como o Dividend Yield é calculado?',
+            html: `
+                <div class="text-start">
+                    <p>O DY considera a soma dos proventos por cota pagos nos últimos 12 meses dividida pela cotação atual, multiplicada por 100.</p>
+                    <p class="mb-3">Os dados de proventos da B3 são consultados via Yahoo Finance; o indicador é histórico e não garante rendimentos futuros.</p>
+                    <a class="btn btn-outline-success btn-sm" href="${googleSearchUrl(`${cleanTicker} dividendos proventos status invest`)}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-google me-1"></i> Pesquisar histórico de ${escapeHtml(cleanTicker)}
+                    </a>
+                </div>
+            `,
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#198754',
+            background: '#212529',
+            color: '#ffffff',
+            width: 'min(92vw, 560px)',
+            customClass: { popup: 'border border-secondary shadow-lg rounded-4' }
+        });
+    };
+
+    const handleMonthClick = item => {
+        const monthPayment = paidDividends.find(payment => (
+            Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
+        ));
+        const amountPerShare = Number(monthPayment?.amount);
+        const hasPayment = Number.isFinite(amountPerShare) && amountPerShare > 0;
+        const searchUrl = googleSearchUrl(
+            `${cleanTicker} data com dividendos ${item.full} ${item.year}`
+        );
+        const dataComRule = isFii
+            ? 'Para FIIs, a Data-Com costuma ser o último dia útil do mês definido para a distribuição.'
+            : 'Para ações, a Data-Com é definida pelo conselho de administração em cada anúncio.';
+
+        window.Swal.fire({
+            title: `${escapeHtml(cleanTicker)} • ${item.full} ${item.year}`,
+            html: hasPayment
+                ? `
+                    <div class="text-start">
+                        <p class="mb-2">Total histórico pago por cota: <strong class="text-success">R$ ${amountPerShare.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong></p>
+                        <p class="mb-2">Estimativa para ${quantity} cotas atuais: <strong class="text-white">R$ ${(amountPerShare * quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>
+                        <p class="small text-secondary">${dataComRule} Confirme sempre a data oficial no comunicado do emissor.</p>
+                        <a class="btn btn-outline-info btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-google me-1"></i> Buscar Data-Com oficial
+                        </a>
+                    </div>
+                `
+                : `
+                    <div class="text-start">
+                        <p>Não houve distribuição registrada neste mês no histórico disponível.</p>
+                        <a class="btn btn-outline-info btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-google me-1"></i> Consultar proventos e Data-Com
+                        </a>
+                    </div>
+                `,
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#198754',
+            background: '#212529',
+            color: '#ffffff',
+            width: 'min(92vw, 560px)',
+            customClass: { popup: 'border border-secondary shadow-lg rounded-4' }
+        });
     };
 
     const handleShowPvpInfo = event => {
@@ -88,17 +173,6 @@ export default function AssetCard({
             }
         });
     };
-
-    React.useEffect(() => {
-        const handleOutsideClick = (event) => {
-            if (monthsContainerRef.current && !monthsContainerRef.current.contains(event.target)) {
-                setActiveMonthKey(null);
-            }
-        };
-
-        document.addEventListener('click', handleOutsideClick);
-        return () => document.removeEventListener('click', handleOutsideClick);
-    }, []);
 
     // Cálculo da Bola de Neve (Magic Number)
     const rendaMensalPorCota = currentPrice > 0 && yieldPct > 0 ? (currentPrice * (yieldPct / 100)) / 12 : 0;
@@ -141,19 +215,6 @@ export default function AssetCard({
             full: monthNamesFull[mIdx - 1]
         });
     }
-
-    const selectedMonthData = activeMonthKey 
-        ? rollingMonths.find(item => `${item.monthIndex}-${item.year}` === activeMonthKey)
-        : null;
-    const selectedMonthHasPaid = selectedMonthData 
-        ? paidMonths.includes(selectedMonthData.monthIndex) 
-        : false;
-
-    React.useEffect(() => {
-        if (monthsContainerRef.current) {
-            monthsContainerRef.current.scrollLeft = monthsContainerRef.current.scrollWidth;
-        }
-    }, []);
 
     // Régua Inteligente de Cores de P/VP
     const isFii = assetMeta.type === 'FII';
@@ -268,9 +329,20 @@ export default function AssetCard({
                         <div className="col-4 border-end border-secondary px-1">
                             <p className="price-label mb-0">P. Médio</p>
                             <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
-                            <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
-                                ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
-                            </span>
+                            {isAuthenticated ? (
+                                <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                                    ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-success btn-sm py-0 px-2"
+                                    style={{ fontSize: '0.68rem' }}
+                                    onClick={signInWithGoogle}
+                                >
+                                    <i className="bi bi-google me-1" aria-hidden="true"></i>Entrar
+                                </button>
+                            )}
                         </div>
                     )}
                     <div className={`${mode === 'radar' ? 'col-6' : 'col-4'} border-end border-secondary px-1`}>
@@ -328,13 +400,6 @@ export default function AssetCard({
                         className="asset-dividends-details"
                         onToggle={(event) => {
                             const isOpen = event.currentTarget.open;
-                            if (isOpen && monthsContainerRef.current) {
-                                setTimeout(() => {
-                                    if (monthsContainerRef.current) {
-                                        monthsContainerRef.current.scrollLeft = monthsContainerRef.current.scrollWidth;
-                                    }
-                                }, 50);
-                            }
                             document.querySelectorAll('.asset-dividends-details').forEach((details) => {
                                 if (details.open !== isOpen) {
                                     details.open = isOpen;
@@ -349,20 +414,10 @@ export default function AssetCard({
                                         type="button"
                                         className="dy-info-btn"
                                         aria-label="Informações sobre o cálculo do DY"
-                                        aria-expanded={isDyInfoOpen}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            setIsDyInfoOpen((open) => !open);
-                                        }}
+                                        onClick={handleShowDyInfo}
                                     >
                                         <i className="bi bi-info-circle-fill" aria-hidden="true"></i>
                                     </button>
-                                    {isDyInfoOpen && (
-                                        <span className="dy-info-popover text-start" role="tooltip">
-                                            O Dividend Yield (DY) é baseado nos proventos pagos nos últimos 12 meses, obtidos via Yahoo Finance. Trata-se de uma base estimada e indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
-                                        </span>
-                                    )}
                                 </span>
                             ) : <span aria-hidden="true" />}
                             <span className={`badge ${yieldPct > 0 ? 'bg-success' : 'bg-warning'} m-0`}>
@@ -422,33 +477,27 @@ export default function AssetCard({
                                 </div>
                             )}
 
-                            <div 
-                                ref={monthsContainerRef}
-                                className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container" 
-                                style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}
-                            >
-                                {rollingMonths.map((item, idx) => {
-                                    const monthKey = `${item.monthIndex}-${item.year}`;
-                                    const hasPaid = paidMonths.includes(item.monthIndex);
-                                    const boxBg = hasPaid ? '#28a745' : '#212529';
-                                    const textColor = hasPaid ? '#ffffff' : '#555e68';
-                                    const isYearTurn = idx < rollingMonths.length - 1 && item.year !== rollingMonths[idx + 1].year;
-                                    const isSelected = activeMonthKey === monthKey;
+                            {isAuthenticated ? (
+                                <div className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container">
+                                    {rollingMonths.map(item => {
+                                        const hasPaid = paidDividends.some(payment => (
+                                            Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
+                                        )) || (!paidDividends.length && paidMonths.includes(item.monthIndex));
+                                        const boxBg = hasPaid ? '#28a745' : '#212529';
+                                        const textColor = hasPaid ? '#ffffff' : '#555e68';
+                                        const monthKey = `${item.monthIndex}-${item.year}`;
 
-                                    return (
-                                        <React.Fragment key={monthKey}>
-                                            <div
-                                                tabIndex={0}
-                                                className="month-box flex-shrink-0"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveMonthKey(prev => prev === monthKey ? null : monthKey);
-                                                }}
+                                        return (
+                                            <button
+                                                key={monthKey}
+                                                type="button"
+                                                className="month-box"
+                                                onClick={() => handleMonthClick(item)}
+                                                aria-label={`${item.full} ${item.year}${hasPaid ? ', com proventos' : ', sem proventos registrados'}`}
                                                 style={{
                                                     height: '22px',
-                                                    flex: '0 0 calc((100% - 16px) / 5)',
-                                                    maxWidth: 'calc((100% - 16px) / 5)',
-                                                    minWidth: '40px',
+                                                    flex: '0 0 calc((100% - 20px) / 6)',
+                                                    minWidth: 0,
                                                     backgroundColor: boxBg,
                                                     color: textColor,
                                                     fontSize: '0.68rem',
@@ -459,43 +508,22 @@ export default function AssetCard({
                                                     borderRadius: '4px',
                                                     cursor: 'pointer',
                                                     position: 'relative',
-                                                    border: isSelected 
-                                                        ? '2px solid #6dffb8' 
-                                                        : (hasPaid ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.04)'),
-                                                    boxShadow: isSelected ? '0 0 8px rgba(109, 255, 184, 0.5)' : 'none',
-                                                    transform: isSelected ? 'scale(1.05)' : 'none',
+                                                    border: hasPaid ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.04)',
                                                     transition: 'all 0.15s ease'
                                                 }}
                                             >
                                                 {item.short}
-                                            </div>
-                                            {isYearTurn && (
-                                                <div
-                                                    className="month-year-divider flex-shrink-0"
-                                                    style={{ width: '1px', height: '16px', backgroundColor: '#6c757d', margin: '0 1px' }}
-                                                    title="Virada de Ano"
-                                                />
-                                            )}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </div>
-
-                            {selectedMonthData && (
-                                <div 
-                                    className="mt-2 py-1 px-2 rounded border border-secondary text-center shadow"
-                                    style={{ 
-                                        backgroundColor: '#1a1d20', 
-                                        animation: 'fadeInPopover 0.15s ease-in-out',
-                                        fontSize: '0.72rem'
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <strong className="text-white">{selectedMonthData.full} / {selectedMonthData.year}</strong>
-                                    <span className="mx-1 text-secondary">•</span>
-                                    <span style={{ color: selectedMonthHasPaid ? '#8fe3a7' : '#adb5bd', fontWeight: 600 }}>
-                                        {selectedMonthHasPaid ? 'Pago nos últimos 12 meses' : 'Sem provento nos últimos 12m'}
-                                    </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="guest-paid-months-invite mt-2 p-2 rounded border border-secondary bg-black">
+                                    <p className="small text-secondary mb-2">Entre com Google para ver o histórico de proventos mês a mês.</p>
+                                    <button type="button" className="btn btn-outline-info btn-sm" onClick={signInWithGoogle}>
+                                        <i className="bi bi-google me-1" aria-hidden="true"></i>
+                                        Ver Meses Pagos
+                                    </button>
                                 </div>
                             )}
                         </div>

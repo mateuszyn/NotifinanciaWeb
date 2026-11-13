@@ -48,6 +48,7 @@ export default function Dashboard() {
 
     const [editingAsset, setEditingAsset] = useState(null);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [pendingAssetScroll, setPendingAssetScroll] = useState('');
     const [radarTicker, setRadarTicker] = useState(() => (
         location.state?.ticker
         || window.sessionStorage.getItem('notifinancia:pending-radar-ticker')
@@ -55,12 +56,79 @@ export default function Dashboard() {
     ));
     const pendingPromptScroll = React.useRef(false);
 
+    const handlePrintScreenshot = async () => {
+        if (typeof window.html2canvas !== 'function') {
+            window.Swal.fire({
+                icon: 'error',
+                title: 'Captura indisponível',
+                text: 'Não foi possível carregar a ferramenta de captura de tela.'
+            });
+            return;
+        }
+
+        const dividendDetails = Array.from(document.querySelectorAll('.asset-dividends-details'))
+            .map(details => ({ details, open: details.open }));
+
+        try {
+            document.querySelectorAll('.dropdown-menu.show, .popover.show, .dropdown-toggle.show')
+                .forEach(element => element.classList.remove('show'));
+            document.querySelectorAll('details.user-menu[open]')
+                .forEach(menu => { menu.open = false; });
+
+            document.body.classList.add('capturing-screenshot');
+            dividendDetails.forEach(({ details }) => { details.open = true; });
+            await new Promise(resolve => window.setTimeout(resolve, 200));
+
+            const captureTarget = document.querySelector('.container.mt-4.mb-5.pb-5');
+            if (!captureTarget) {
+                throw new Error('Não foi possível localizar a carteira para capturar.');
+            }
+
+            const canvas = await window.html2canvas(captureTarget, {
+                backgroundColor: '#212529',
+                scale: Math.min(window.devicePixelRatio || 1, 2),
+                useCORS: true
+            });
+            const downloadLink = document.createElement('a');
+            downloadLink.download = `notifinancia-carteira-${new Date().toISOString().slice(0, 10)}.png`;
+            downloadLink.href = canvas.toDataURL('image/png');
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            downloadLink.remove();
+        } catch (error) {
+            window.Swal.fire({
+                icon: 'error',
+                title: 'Falha ao capturar a carteira',
+                text: error.message || 'Tente novamente em alguns instantes.'
+            });
+        } finally {
+            dividendDetails.forEach(({ details, open }) => { details.open = open; });
+            document.body.classList.remove('capturing-screenshot');
+        }
+    };
+
     React.useEffect(() => {
         if (isAuthenticated && radarTicker) {
             setActiveTab('portfolio');
             window.sessionStorage.removeItem('notifinancia:pending-radar-ticker');
         }
     }, [isAuthenticated, radarTicker]);
+
+    React.useEffect(() => {
+        if (!pendingAssetScroll || activeTab !== 'portfolio' || loading) return undefined;
+
+        const frame = window.requestAnimationFrame(() => {
+            const target = document.getElementById(`asset-card-${pendingAssetScroll}`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target.classList.add('highlight-target');
+                window.setTimeout(() => target.classList.remove('highlight-target'), 1200);
+            }
+            setPendingAssetScroll('');
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [activeTab, assets, loading, pendingAssetScroll]);
 
     React.useEffect(() => {
         if (!radarTicker || !location.state?.ticker) return;
@@ -99,23 +167,6 @@ export default function Dashboard() {
     const portfolioControls = (
         <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
             <div className="portfolio-view-actions">
-                <button type="button" className="btn btn-outline-light" onClick={() => {
-                    const restoreScroll = () => {
-                        document.body.style.overflow = '';
-                        document.body.style.overflowY = '';
-                        document.documentElement.style.overflow = '';
-                        document.documentElement.style.overflowY = '';
-                        document.body.style.position = '';
-                        document.body.style.top = '';
-                        document.body.style.width = '';
-                        window.removeEventListener('afterprint', restoreScroll);
-                    };
-                    window.addEventListener('afterprint', restoreScroll);
-                    window.print();
-                }}>
-                    <i className="bi bi-printer me-2" aria-hidden="true"></i>
-                    Print
-                </button>
                 <button
                     type="button"
                     className="btn btn-outline-info"
@@ -124,6 +175,10 @@ export default function Dashboard() {
                     <i className="bi bi-stars me-2" aria-hidden="true"></i>
                     IA
                     <i className="bi bi-chevron-down ms-2" aria-hidden="true"></i>
+                </button>
+                <button type="button" className="btn btn-outline-light" onClick={handlePrintScreenshot}>
+                    <i className="bi bi-camera-fill text-info me-2" aria-hidden="true"></i>
+                    Print
                 </button>
             </div>
             <label className="asset-zoom-control" htmlFor="asset-columns">
@@ -263,8 +318,15 @@ export default function Dashboard() {
                     recommendedCount={10}
                 />
 
+                {activeTab === 'portfolio' && !isAuthenticated && (
+                    <div className="alert alert-info d-flex align-items-center gap-2" role="status">
+                        <i className="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <span><strong>Carteira Provisória Local:</strong> seus ativos e ajustes ficam salvos neste dispositivo.</span>
+                    </div>
+                )}
+
                 {activeTab === 'portfolio' && !loading && (
-                    <PortfolioSummary assets={assets} />
+                    <PortfolioSummary assets={assets} isAuthenticated={isAuthenticated} />
                 )}
 
                 {activeTab === 'recommended' && (
@@ -277,6 +339,11 @@ export default function Dashboard() {
                             error={recommendedError}
                             refresh={refreshRecommendations}
                             toolbar={portfolioControls}
+                            existingTickers={assets.map(asset => asset.ticker)}
+                            onGoToPortfolio={ticker => {
+                                setPendingAssetScroll(ticker);
+                                setActiveTab('portfolio');
+                            }}
                         />
                         <PromptView mode="recommended" assets={recommendedAssets} isGuest={false} />
                     </>

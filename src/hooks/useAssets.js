@@ -194,6 +194,7 @@ export function useAssets() {
                     : 0,
                 totalValue: quantity * currentPrice,
                 paidMonths: Array.isArray(assetData.paidMonths) ? assetData.paidMonths : [],
+                paidDividends: Array.isArray(assetData.paidDividends) ? assetData.paidDividends : [],
                 dataError: false
             };
             const updatedAssets = [...rawAssets, guestAsset];

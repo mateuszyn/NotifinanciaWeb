@@ -1,9 +1,16 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { AssetService } from '../services/asset-service.js';
 
-export default function PortfolioSummary({ assets }) {
+export default function PortfolioSummary({ assets, isAuthenticated: isAuthenticatedProp }) {
+    const auth = useAuth();
+    const [hoveredTicker, setHoveredTicker] = React.useState(null);
+    const longPressTimerRef = React.useRef(null);
+    const isLongPressRef = React.useRef(false);
+
     if (!assets || assets.length === 0) return null;
 
+    const isAuthenticated = isAuthenticatedProp ?? auth.isAuthenticated;
     const summary = AssetService.calculatePortfolioSummary(assets);
     
     const formatCurrency = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -17,10 +24,6 @@ export default function PortfolioSummary({ assets }) {
     const annualYieldPct = summary.currentValue > 0
         ? (summary.annualDividends / summary.currentValue) * 100
         : 0;
-
-    const [hoveredTicker, setHoveredTicker] = React.useState(null);
-    const longPressTimerRef = React.useRef(null);
-    const isLongPressRef = React.useRef(false);
 
     const scrollToAsset = (ticker) => {
         const cleanTicker = ticker.replace(/[^a-zA-Z0-9]/g, '');
@@ -66,6 +69,33 @@ export default function PortfolioSummary({ assets }) {
             clearTimeout(longPressTimerRef.current);
             longPressTimerRef.current = null;
         }
+    };
+
+    const handleShowDyInfo = period => {
+        const tickers = assets
+            .map(asset => String(asset.ticker || '').replace(/\.SA$/i, '').toUpperCase())
+            .filter(Boolean);
+        const query = `${tickers.join(' OR ')} dividendos proventos status invest`;
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+
+        window.Swal.fire({
+            title: `Sobre o DY ${period}`,
+            html: `
+                <div class="text-start">
+                    <p>O Dividend Yield considera os proventos dos últimos 12 meses em relação à cotação atual. Neste resumo, o valor é consolidado e ponderado pelos ativos da carteira.</p>
+                    <p class="mb-3">Os dados oficiais de proventos da B3 são consultados via Yahoo Finance; o indicador é histórico e não garante rendimentos futuros.</p>
+                    <a class="btn btn-outline-success btn-sm" href="${searchUrl}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-google me-1"></i> Pesquisar histórico dos ativos no Google
+                    </a>
+                </div>
+            `,
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#198754',
+            background: '#212529',
+            color: '#ffffff',
+            width: 'min(92vw, 560px)',
+            customClass: { popup: 'border border-secondary shadow-lg rounded-4' }
+        });
     };
 
     return (
@@ -134,34 +164,42 @@ export default function PortfolioSummary({ assets }) {
                 </div>
                 <div className="summary-metric">
                     <span>Variação global</span>
-                    <strong className={textProfitClass}>{formatCurrency(summary.profit)}</strong>
-                    <small className={textProfitClass}>{(summary.profitPct || 0) >= 0 ? '+' : ''}{(summary.profitPct || 0).toFixed(2)}%</small>
+                    {isAuthenticated ? (
+                        <>
+                            <strong className={textProfitClass}>{formatCurrency(summary.profit)}</strong>
+                            <small className={textProfitClass}>{(summary.profitPct || 0) >= 0 ? '+' : ''}{(summary.profitPct || 0).toFixed(2)}%</small>
+                        </>
+                    ) : (
+                        <button type="button" className="btn btn-outline-success btn-sm mt-2" onClick={auth.signInWithGoogle}>
+                            <i className="bi bi-google me-1" aria-hidden="true"></i>Entrar com Google
+                        </button>
+                    )}
                 </div>
                 <div className="summary-metric position-relative">
                     <span>DY aprox. anual</span>
                     <strong>{formatCurrency(summary.annualDividends)}</strong>
                     <small>{annualYieldPct.toFixed(2)}% ao ano</small>
-                    <details className="dy-info-wrapper">
-                        <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY anual">
+                    <button
+                        type="button"
+                        className="dy-info-btn"
+                        aria-label="Informações sobre o cálculo do DY anual"
+                        onClick={() => handleShowDyInfo('anual')}
+                    >
                             <i className="bi bi-info-circle-fill"></i>
-                        </summary>
-                        <div className="dy-info-popover text-start">
-                            O Dividend Yield (DY) é baseado nos proventos pagos nos últimos 12 meses, obtidos via Yahoo Finance. Trata-se de uma base estimada e indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
-                        </div>
-                    </details>
+                    </button>
                 </div>
                 <div className="summary-metric position-relative">
                     <span>DY aprox. mensal</span>
                     <strong>{formatCurrency((summary.annualDividends || 0) / 12)}</strong>
                     <small>{(summary.monthlyYieldPct || 0).toFixed(2)}% ao mês</small>
-                    <details className="dy-info-wrapper">
-                        <summary className="dy-info-btn" aria-label="Informações sobre o cálculo do DY mensal">
+                    <button
+                        type="button"
+                        className="dy-info-btn"
+                        aria-label="Informações sobre o cálculo do DY mensal"
+                        onClick={() => handleShowDyInfo('mensal')}
+                    >
                             <i className="bi bi-info-circle-fill"></i>
-                        </summary>
-                        <div className="dy-info-popover text-start">
-                            O Dividend Yield (DY) é baseado nos proventos pagos nos últimos 12 meses, obtidos via Yahoo Finance. Trata-se de uma base estimada e indicativa, <strong>não constituindo garantia</strong> de rendimentos futuros.
-                        </div>
-                    </details>
+                    </button>
                 </div>
             </div>
         </section>

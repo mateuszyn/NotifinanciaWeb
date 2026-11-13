@@ -15,6 +15,7 @@ export class Asset {
         this.totalValue = 0;
         this.priceToBook = null;
         this.paidMonths = [];
+        this.paidDividends = [];
         this.dataError = false;
     }
 
@@ -39,7 +40,12 @@ export class Asset {
             this.currentPrice = price;
             this.dailyChange = Number(cachedChange) || 0;
             this.yieldPct = Number(cachedYield) || 0;
-            this.paidMonths = Array.isArray(cachedPaidMonths) ? cachedPaidMonths : [];
+            this.paidMonths = Array.isArray(cachedPaidMonths)
+                ? cachedPaidMonths
+                : cachedPaidMonths?.months || [];
+            this.paidDividends = Array.isArray(cachedPaidMonths?.dividends)
+                ? cachedPaidMonths.dividends
+                : [];
             
             this.divAnual = this.currentPrice * (this.yieldPct / 100) * this.quantity;
             this.divMensal = this.divAnual / 12;
@@ -68,6 +74,10 @@ export class Asset {
         const monthsRaw = marketData.paidMonths || marketData.paid_months;
         if (Array.isArray(monthsRaw)) {
             this.paidMonths = monthsRaw;
+        }
+        const dividendsRaw = marketData.paidDividends || marketData.paid_dividends;
+        if (Array.isArray(dividendsRaw)) {
+            this.paidDividends = dividendsRaw;
         }
         if (fetchedPrice > 0) {
             // SUCESSO: Atualiza com os dados super frescos do mercado

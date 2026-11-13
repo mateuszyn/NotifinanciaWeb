@@ -39,7 +39,7 @@ export const AssetService = {
             // CACHE INSTANTÂNEO: Aplica preço, variação, DY, P/VP e os meses pagos salvos
             const cachedPaidMonths = Array.isArray(item.cached_paid_months)
                 ? item.cached_paid_months
-                : item.cached_paid_months?.months || [];
+                : item.cached_paid_months || [];
             asset.applyCache(
                 item.cached_price,
                 item.cached_change,
@@ -77,13 +77,19 @@ export const AssetService = {
         if (latestBatch.length !== 10) return [];
 
         return latestBatch.map(row => {
-            const paidMonths = row.paid_months ?? row.paidMonths ?? [];
+            const cachedPaidMonths = row.paid_months ?? row.paidMonths ?? [];
+            const paidMonths = Array.isArray(cachedPaidMonths)
+                ? cachedPaidMonths
+                : cachedPaidMonths.months || [];
             const marketData = {
                 price: row.price ?? row.current_price ?? null,
                 yieldpct: row.yield_pct ?? row.yieldPct ?? 0,
                 priceToBook: row.price_to_book ?? row.priceToBook ?? null,
                 changePercent: row.change_percent ?? row.changePercent ?? null,
-                paidMonths: Array.isArray(paidMonths) ? paidMonths : []
+                paidMonths: Array.isArray(paidMonths) ? paidMonths : [],
+                paidDividends: Array.isArray(cachedPaidMonths?.dividends)
+                    ? cachedPaidMonths.dividends
+                    : []
             };
 
             return {
@@ -112,7 +118,10 @@ export const AssetService = {
                 yield_pct: marketData.yieldpct ?? marketData.yieldPct ?? marketData.dividendYield ?? 0,
                 price_to_book: marketData.priceToBook ?? marketData.price_to_book ?? null,
                 change_percent: marketData.changePercent ?? marketData.regularMarketChangePercent ?? null,
-                paid_months: marketData.paidMonths ?? marketData.paid_months ?? [],
+                paid_months: {
+                    months: marketData.paidMonths ?? marketData.paid_months ?? [],
+                    dividends: marketData.paidDividends ?? marketData.paid_dividends ?? []
+                },
                 updated_at: timestamp
             };
         });
@@ -172,7 +181,10 @@ export const AssetService = {
                     cached_change: asset.dailyChange,
                     cached_yield: asset.yieldPct,
                     cached_pvp: asset.pvp,
-                    cached_paid_months: asset.paidMonths
+                    cached_paid_months: {
+                        months: asset.paidMonths,
+                        dividends: asset.paidDividends
+                    }
                 }).eq('id', asset.id)
             );
             const results = await Promise.all(updates);
