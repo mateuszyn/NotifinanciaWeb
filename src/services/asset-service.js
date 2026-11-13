@@ -13,6 +13,15 @@ function isRecommendedCacheFresh(timestamp, now = new Date()) {
         || now.getTime() - cachedAt.getTime() <= RECOMMENDED_CACHE_MAX_AGE_MS;
 }
 
+function getPaidMonths(value) {
+    if (Array.isArray(value)) return value;
+    return Array.isArray(value?.months) ? value.months : [];
+}
+
+function getPaidDividends(value) {
+    return Array.isArray(value?.dividends) ? value.dividends : [];
+}
+
 export const AssetService = {
     // --- BLINDAGEM JWT ---
     async _getAuthHeaders() {
@@ -30,16 +39,17 @@ export const AssetService = {
     // Busca ativos no banco de dados e carrega o cache instantâneo (incluindo os meses pagos)
     async getAssets() {
         const { data, error } = await supabase.from('assets').select('*');
-        if (error) return [];
+        if (error) throw error;
         
         return data.map(item => {
             const asset = new Asset(item.ticker, item.quantity, item.average_price, item.vpa);
             asset.id = item.id;
             
             // CACHE INSTANTÂNEO: Aplica preço, variação, DY, P/VP e os meses pagos salvos
-            const cachedPaidMonths = Array.isArray(item.cached_paid_months)
-                ? item.cached_paid_months
-                : item.cached_paid_months?.months || [];
+            const cachedPaidMonths = {
+                months: getPaidMonths(item.cached_paid_months),
+                dividends: getPaidDividends(item.cached_paid_months)
+            };
             asset.applyCache(
                 item.cached_price,
                 item.cached_change,
@@ -77,13 +87,14 @@ export const AssetService = {
         if (latestBatch.length !== 10) return [];
 
         return latestBatch.map(row => {
-            const paidMonths = row.paid_months ?? row.paidMonths ?? [];
+            const cachedPaidMonths = row.paid_months ?? row.paidMonths ?? [];
             const marketData = {
                 price: row.price ?? row.current_price ?? null,
                 yieldpct: row.yield_pct ?? row.yieldPct ?? 0,
                 priceToBook: row.price_to_book ?? row.priceToBook ?? null,
                 changePercent: row.change_percent ?? row.changePercent ?? null,
-                paidMonths: Array.isArray(paidMonths) ? paidMonths : []
+                paidMonths: getPaidMonths(cachedPaidMonths),
+                paidDividends: getPaidDividends(cachedPaidMonths)
             };
 
             return {
@@ -112,7 +123,10 @@ export const AssetService = {
                 yield_pct: marketData.yieldpct ?? marketData.yieldPct ?? marketData.dividendYield ?? 0,
                 price_to_book: marketData.priceToBook ?? marketData.price_to_book ?? null,
                 change_percent: marketData.changePercent ?? marketData.regularMarketChangePercent ?? null,
-                paid_months: marketData.paidMonths ?? marketData.paid_months ?? [],
+                paid_months: {
+                    months: marketData.paidMonths ?? marketData.paid_months ?? [],
+                    dividends: marketData.paidDividends ?? marketData.paid_dividends ?? []
+                },
                 updated_at: timestamp
             };
         });
@@ -172,7 +186,12 @@ export const AssetService = {
                     cached_change: asset.dailyChange,
                     cached_yield: asset.yieldPct,
                     cached_pvp: asset.pvp,
-                    cached_paid_months: asset.paidMonths
+                    cached_paid_months: {
+                        months: getPaidMonths(asset.paidMonths),
+                        dividends: Array.isArray(asset.paidDividends)
+                            ? asset.paidDividends
+                            : getPaidDividends(asset.paidDividends)
+                    }
                 }).eq('id', asset.id)
             );
             const results = await Promise.all(updates);
@@ -280,6 +299,37 @@ export const AssetService = {
                 average_price: asset.averagePrice,
                 vpa: asset.vpa || null
             }]);
+        if (error) throw error;
+    },
+
+    async addAssets(assets) {
+        if (!Array.isArray(assets) || assets.length === 0) return;
+
+        const seenTickers = new Set();
+        const rows = assets.map(asset => {
+            const ticker = String(asset.ticker || '').trim().toUpperCase();
+            const cleanTicker = ticker.replace(/\.SA$/i, '');
+            const quantity = Number(asset.quantity);
+            const averagePrice = Number(asset.averagePrice);
+
+            if (!ticker || seenTickers.has(cleanTicker)) {
+                throw new Error(`Ticker inválido ou duplicado na carteira provisória: ${ticker || 'vazio'}.`);
+            }
+            if (!Number.isFinite(quantity) || quantity <= 0
+                || !Number.isFinite(averagePrice) || averagePrice <= 0) {
+                throw new Error(`Quantidade ou preço médio inválido para ${ticker}.`);
+            }
+
+            seenTickers.add(cleanTicker);
+            return {
+                ticker,
+                quantity,
+                average_price: averagePrice,
+                vpa: Number(asset.vpa) || null
+            };
+        });
+
+        const { error } = await supabase.from('assets').insert(rows);
         if (error) throw error;
     },
 

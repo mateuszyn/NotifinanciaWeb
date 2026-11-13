@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { TICKER_DATA } from '../utils/ticker-data.js';
+import { createFiiLossAlert, createFiiProfitTaxAlert } from '../utils/fii-tax-alert.js';
 
-export default function UpdateAssetModal({ asset, onClose, onSave }) {
+export default function UpdateAssetModal({ asset, onClose, onSave, onDelete }) {
     const [quantity, setQuantity] = useState(0);
     const [averagePrice, setAveragePrice] = useState(0);
 
@@ -15,16 +17,102 @@ export default function UpdateAssetModal({ asset, onClose, onSave }) {
     if (!asset) return null;
 
     const handleQuickQty = (delta) => {
-        setQuantity(prev => Math.max(0, prev + delta));
+        setQuantity(prev => Math.max(0, Math.round(prev + delta)));
     };
 
     const handleQuickPrice = (delta) => {
-        setAveragePrice(prev => Math.max(0, prev + delta));
+        setAveragePrice(prev => Math.max(0, Number((prev + delta).toFixed(2))));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSave(asset.id, { quantity, averagePrice });
+        const newQuantity = Number(quantity);
+        const currentQuantity = Number(asset.quantity) || 0;
+        const cleanTicker = String(asset.ticker || '').replace(/\.SA$/i, '').toUpperCase();
+        const isFii = asset.type === 'FII' || TICKER_DATA[cleanTicker]?.type === 'FII';
+        const soldQuantity = currentQuantity - newQuantity;
+        const averagePriceAtSale = Number(averagePrice) || 0;
+        const currentPrice = Number(asset.currentPrice) || 0;
+        const profit = (currentPrice - averagePriceAtSale) * soldQuantity;
+        const assetName = asset.name || TICKER_DATA[cleanTicker]?.name || asset.ticker;
+
+        const confirmFiiSale = async (confirmButtonText, cancelButtonText) => {
+            if (profit > 0) {
+                return window.Swal.fire(createFiiProfitTaxAlert({
+                    assetName,
+                    soldQuantity,
+                    profit,
+                    confirmButtonText,
+                    cancelButtonText,
+                    allowOutsideClick: false
+                }));
+            }
+            if (profit < 0) {
+                return window.Swal.fire(createFiiLossAlert({
+                    assetName,
+                    soldQuantity,
+                    loss: profit,
+                    confirmButtonText,
+                    cancelButtonText,
+                    allowOutsideClick: false
+                }));
+            }
+            return window.Swal.fire({
+                title: 'Confirmar encerramento?',
+                text: `Você está encerrando sua posição em ${assetName}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText,
+                cancelButtonText,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                background: '#212529',
+                color: '#ffffff'
+            });
+        };
+
+        if (newQuantity === 0) {
+            const result = isFii
+                ? await confirmFiiSale('Entendi, excluir posição', 'Cancelar')
+                : await window.Swal.fire({
+                    title: 'Encerrar posição?',
+                    text: `O ativo ${assetName} será removido da carteira.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim, encerrar posição',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                });
+            if (!result.isConfirmed) return;
+
+            try {
+                await onDelete(asset.id);
+                onClose();
+                await window.Swal.fire({
+                    icon: 'success',
+                    title: 'Posição encerrada',
+                    text: `${asset.ticker} foi removido da carteira.`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error('Não foi possível encerrar a posição.', error);
+                await window.Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao encerrar posição',
+                    text: error.message || 'Não foi possível remover o ativo da carteira.'
+                });
+            }
+            return;
+        }
+
+        if (isFii && soldQuantity > 0 && profit !== 0) {
+            const result = await confirmFiiSale('Entendi, salvar redução', 'Revisar edição');
+            if (!result.isConfirmed) return;
+        }
+
+        await onSave(asset.id, { quantity: newQuantity, averagePrice: Number(averagePrice) });
     };
 
     return (
@@ -40,6 +128,7 @@ export default function UpdateAssetModal({ asset, onClose, onSave }) {
                             type="number"
                             className="form-control bg-black text-white border-secondary"
                             required
+                            min="0"
                             step="any"
                             value={quantity}
                             onChange={(e) => setQuantity(Number(e.target.value))}
@@ -61,7 +150,10 @@ export default function UpdateAssetModal({ asset, onClose, onSave }) {
                             required
                             step="0.01"
                             value={averagePrice}
-                            onChange={(e) => setAveragePrice(parseFloat(e.target.value))}
+                            onChange={(e) => {
+                                const parsedPrice = parseFloat(e.target.value);
+                                setAveragePrice(Number.isFinite(parsedPrice) ? Number(parsedPrice.toFixed(2)) : 0);
+                            }}
                         />
                         <div className="d-flex gap-2 mt-2">
                             <button type="button" className="btn btn-outline-danger btn-sm btn-quick-price" onClick={() => handleQuickPrice(-0.1)}>-0,10</button>

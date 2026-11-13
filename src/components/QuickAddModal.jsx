@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 
-export default function QuickAddModal({ asset, onClose, onSave }) {
+function normalizeTicker(ticker) {
+    return String(ticker || '').trim().toUpperCase().replace(/\.SA$/i, '');
+}
+
+export default function QuickAddModal({
+    asset,
+    onClose,
+    onSave,
+    existingTickers = [],
+    onGoToPortfolio
+}) {
     const [quantity, setQuantity] = useState(10);
     const [averagePrice, setAveragePrice] = useState('');
     const [saving, setSaving] = useState(false);
@@ -17,6 +27,9 @@ export default function QuickAddModal({ asset, onClose, onSave }) {
 
     if (!asset) return null;
 
+    const isDuplicate = existingTickers.some(
+        existingTicker => normalizeTicker(existingTicker) === normalizeTicker(asset.ticker)
+    );
     const quantityValue = Number(quantity || 0);
     const averagePriceValue = Number(averagePrice || 0);
     const totalApprox = quantityValue * averagePriceValue;
@@ -29,6 +42,8 @@ export default function QuickAddModal({ asset, onClose, onSave }) {
 
     const handleSubmit = async event => {
         event.preventDefault();
+        if (isDuplicate) return;
+
         const cleanQuantity = Number(quantity);
         const cleanAveragePrice = Number(averagePrice);
 
@@ -158,17 +173,34 @@ export default function QuickAddModal({ asset, onClose, onSave }) {
                     </div>
 
                     {error && <p className="text-danger small mb-3" role="alert">{error}</p>}
+                    {isDuplicate && (
+                        <div className="alert alert-warning small py-2" role="alert">
+                            Este ativo já está na sua carteira
+                        </div>
+                    )}
 
                     <div className="d-flex gap-3">
+                        {isDuplicate && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-info flex-grow-1 fw-bold py-2"
+                                onClick={() => {
+                                    onClose();
+                                    onGoToPortfolio?.(normalizeTicker(asset.ticker));
+                                }}
+                            >
+                                Ir para Carteira
+                            </button>
+                        )}
                         <button
                             type="button"
-                            className="btn btn-outline-secondary flex-grow-1 fw-bold py-2"
+                            className={`btn btn-outline-secondary ${isDuplicate ? '' : 'flex-grow-1'} fw-bold py-2`}
                             onClick={onClose}
                             disabled={saving}
                         >
                             Cancelar
                         </button>
-                        <button type="submit" className="btn btn-success flex-grow-1 fw-bold py-2" disabled={saving}>
+                        <button type="submit" className="btn btn-success flex-grow-1 fw-bold py-2" disabled={saving || isDuplicate}>
                             {saving ? 'Salvando...' : 'Confirmar e Salvar na Carteira'}
                         </button>
                     </div>

@@ -6,7 +6,7 @@
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
-    z-index: 9999 !important;
+    z-index: 1050;
     display: none;
     justify-content: center;
     align-items: center;
@@ -24,6 +24,10 @@
     max-width: 400px;
     border: 1px solid #444;
     animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.swal-darf-container {
+    z-index: 100000 !important;
 }
 
 @keyframes modalPop {

@@ -3,6 +3,13 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class PaidDividend(BaseModel):
+    year: int
+    month: int
+    amount: float
+    dateCom: Optional[str] = None
+
+
 class PingResponse(BaseModel):
     status: str
 
@@ -13,6 +20,7 @@ class MarketDataResult(BaseModel):
     changePercent: Optional[float] = None
     yieldpct: float = 0.0
     paidMonths: List[int] = Field(default_factory=list)
+    paidDividends: List[PaidDividend] = Field(default_factory=list)
     priceToBook: Optional[float] = None
 
 

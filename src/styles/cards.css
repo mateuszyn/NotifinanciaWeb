@@ -311,23 +311,6 @@
     cursor: pointer;
 }
 
-.asset-card-dy-info .dy-info-popover {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: auto;
-    width: min(240px, calc(100vw - 40px));
-    background-color: var(--modal-bg, #212529);
-    border: 1px solid #555;
-    border-radius: 10px;
-    padding: 10px 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-    z-index: 1300;
-    font-size: 0.75rem;
-    color: #cbd5e1;
-    line-height: 1.4;
-}
-
 .asset-dividends-details > summary {
     display: grid;
     grid-template-columns: minmax(24px, 1fr) auto minmax(24px, 1fr);
@@ -774,20 +757,26 @@
 /* Container do grid de meses */
 .months-grid-container {
     position: relative;
+    display: flex;
+    flex-wrap: wrap;
     gap: 2px;
-    /* justify-content auto */
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Estilo base de cada mês no grid */
 .month-box {
-    /* flex auto */
-    width: auto;
+    flex: 0 0 calc((100% - 20px) / 6);
+    width: calc((100% - 20px) / 6);
     min-width: 0;
+    max-width: none;
     box-sizing: border-box;
     height: 22px;
     font-size: 0.65rem;
+    font-family: inherit;
     font-weight: bold;
+    padding: 0;
+    appearance: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -799,7 +788,7 @@
 }
 
 .month-year-divider {
-    flex: 0 0 1px;
+    display: none !important;
 }
 
 .month-box:active {
@@ -824,7 +813,6 @@
     .asset-card-actions,
     .asset-broker-link,
     .modal-overlay,
-    .dy-info-wrapper,
     .month-tooltip {
         display: none !important;
     }
@@ -918,18 +906,49 @@
 }
 
 .asset-card-wrapper .months-grid-container {
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
 }
 
-.asset-card-wrapper .months-grid-container::-webkit-scrollbar {
-    height: 3px;
+.guest-paid-months-invite {
+    font-size: 0.75rem;
 }
 
-.asset-card-wrapper .months-grid-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+body.capturing-screenshot header,
+body.capturing-screenshot .portfolio-tabs-container,
+body.capturing-screenshot footer,
+body.capturing-screenshot .asset-broker-link,
+body.capturing-screenshot .bottom-drawer,
+body.capturing-screenshot .drawer-overlay,
+body.capturing-screenshot .portfolio-view-controls,
+body.capturing-screenshot .asset-card-actions,
+body.capturing-screenshot .prompt-view {
+    display: none !important;
+}
+
+body.capturing-screenshot .asset-dividends-details[open] > .asset-dividends-content {
+    display: block !important;
+}
+
+body.capturing-screenshot .asset-dividends-details:not([open]) > .asset-dividends-content {
+    display: none !important;
+}
+
+body.capturing-screenshot .months-grid-container {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+body.capturing-screenshot .month-box {
+    flex: 0 0 calc((100% - 20px) / 6);
+    max-width: calc((100% - 20px) / 6);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+body.capturing-screenshot .asset-card {
+    break-inside: avoid;
 }

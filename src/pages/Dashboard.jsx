@@ -12,9 +12,10 @@ import PromptView from '../components/PromptView';
 import Header from '../components/Header';
 import UpdateAssetModal from '../components/UpdateAssetModal';
 import AddAssetDrawer from '../components/AddAssetDrawer';
+import { createFiiProfitTaxAlert } from '../utils/fii-tax-alert.js';
 
 export default function Dashboard() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, signInWithGoogle } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(() => (
@@ -48,6 +49,7 @@ export default function Dashboard() {
 
     const [editingAsset, setEditingAsset] = useState(null);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [pendingAssetScroll, setPendingAssetScroll] = useState('');
     const [radarTicker, setRadarTicker] = useState(() => (
         location.state?.ticker
         || window.sessionStorage.getItem('notifinancia:pending-radar-ticker')
@@ -55,12 +57,74 @@ export default function Dashboard() {
     ));
     const pendingPromptScroll = React.useRef(false);
 
+    const handlePrintScreenshot = async () => {
+        if (typeof window.html2canvas !== 'function') {
+            window.Swal.fire({
+                icon: 'error',
+                title: 'Captura indisponível',
+                text: 'Não foi possível carregar a ferramenta de captura de tela.'
+            });
+            return;
+        }
+
+        try {
+            document.querySelectorAll('.dropdown-menu.show, .popover.show, .tooltip.show, .dropdown-toggle.show')
+                .forEach(element => element.classList.remove('show'));
+            document.querySelectorAll('details.user-menu[open]')
+                .forEach(menu => { menu.open = false; });
+
+            document.body.classList.add('capturing-screenshot');
+            await new Promise(resolve => window.setTimeout(resolve, 200));
+
+            const captureTarget = document.querySelector('.container.mt-4.mb-5.pb-5');
+            if (!captureTarget) {
+                throw new Error('Não foi possível localizar a carteira para capturar.');
+            }
+
+            const canvas = await window.html2canvas(captureTarget, {
+                backgroundColor: '#212529',
+                scale: Math.min(window.devicePixelRatio || 1, 2),
+                useCORS: true
+            });
+            const downloadLink = document.createElement('a');
+            downloadLink.download = `notifinancia-carteira-${new Date().toISOString().slice(0, 10)}.png`;
+            downloadLink.href = canvas.toDataURL('image/png');
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            downloadLink.remove();
+        } catch (error) {
+            window.Swal.fire({
+                icon: 'error',
+                title: 'Falha ao capturar a carteira',
+                text: error.message || 'Tente novamente em alguns instantes.'
+            });
+        } finally {
+            document.body.classList.remove('capturing-screenshot');
+        }
+    };
+
     React.useEffect(() => {
         if (isAuthenticated && radarTicker) {
             setActiveTab('portfolio');
             window.sessionStorage.removeItem('notifinancia:pending-radar-ticker');
         }
     }, [isAuthenticated, radarTicker]);
+
+    React.useEffect(() => {
+        if (!pendingAssetScroll || activeTab !== 'portfolio' || loading) return undefined;
+
+        const frame = window.requestAnimationFrame(() => {
+            const target = document.getElementById(`asset-card-${pendingAssetScroll}`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target.classList.add('highlight-target');
+                window.setTimeout(() => target.classList.remove('highlight-target'), 1200);
+            }
+            setPendingAssetScroll('');
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [activeTab, assets, loading, pendingAssetScroll]);
 
     React.useEffect(() => {
         if (!radarTicker || !location.state?.ticker) return;
@@ -99,23 +163,6 @@ export default function Dashboard() {
     const portfolioControls = (
         <div className="portfolio-view-controls mb-3" role="group" aria-label="Controles da carteira">
             <div className="portfolio-view-actions">
-                <button type="button" className="btn btn-outline-light" onClick={() => {
-                    const restoreScroll = () => {
-                        document.body.style.overflow = '';
-                        document.body.style.overflowY = '';
-                        document.documentElement.style.overflow = '';
-                        document.documentElement.style.overflowY = '';
-                        document.body.style.position = '';
-                        document.body.style.top = '';
-                        document.body.style.width = '';
-                        window.removeEventListener('afterprint', restoreScroll);
-                    };
-                    window.addEventListener('afterprint', restoreScroll);
-                    window.print();
-                }}>
-                    <i className="bi bi-printer me-2" aria-hidden="true"></i>
-                    Print
-                </button>
                 <button
                     type="button"
                     className="btn btn-outline-info"
@@ -124,6 +171,10 @@ export default function Dashboard() {
                     <i className="bi bi-stars me-2" aria-hidden="true"></i>
                     IA
                     <i className="bi bi-chevron-down ms-2" aria-hidden="true"></i>
+                </button>
+                <button type="button" className="btn btn-outline-light" onClick={handlePrintScreenshot}>
+                    <i className="bi bi-camera-fill text-info me-2" aria-hidden="true"></i>
+                    Print
                 </button>
             </div>
             <label className="asset-zoom-control" htmlFor="asset-columns">
@@ -174,40 +225,23 @@ export default function Dashboard() {
 
     const handleDelete = (asset) => {
         const cleanTicker = asset.ticker.replace(/\.SA$/i, '').toUpperCase();
-        const isFII = TICKER_DATA[cleanTicker]?.type === 'FII';
+        const isFII = asset.type === 'FII' || TICKER_DATA[cleanTicker]?.type === 'FII';
         const lucro = (asset.currentPrice - asset.averagePrice) * asset.quantity;
         const temLucro = lucro > 0;
         const temPrejuizo = lucro < 0;
 
-        const getLastBusinessDay = () => {
-            const today = new Date();
-            const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-            let dayOfWeek = nextMonth.getDay();
-            if (dayOfWeek === 0) nextMonth.setDate(nextMonth.getDate() - 2);
-            else if (dayOfWeek === 6) nextMonth.setDate(nextMonth.getDate() - 1);
-            return `${String(nextMonth.getDate()).padStart(2, '0')}/${String(nextMonth.getMonth() + 1).padStart(2, '0')}/${nextMonth.getFullYear()}`;
-        };
-
         let alertConfig;
 
         if (isFII && temLucro) {
-            const imposto = lucro * 0.20;
-            alertConfig = {
-                title: 'Atenção: Imposto Devido',
-                icon: 'warning',
-                html: `
-                    <div class="mb-3">
-                        Lucro apurado: <b>R$ ${lucro.toFixed(2).replace('.', ',')}</b><br>
-                        Imposto a pagar (20%): <b><span class="text-danger">R$ ${imposto.toFixed(2).replace('.', ',')}</span></b>
-                    </div>
-                    <div class="text-start">
-                        <p class="small text-secondary mb-2"><b>1.</b> Efetue a venda na sua corretora.</p>
-                        <p class="small text-secondary mb-1"><b>2.</b> Acesse o SicalcWeb e gere o DARF (cód. 6015) até <b>${getLastBusinessDay()}</b>.</p>
-                    </div>
-                `,
-                showCloseButton: true, allowOutsideClick: false, showCancelButton: true,
-                confirmButtonColor: '#dc3545', confirmButtonText: 'Sim, remover da carteira', cancelButtonText: 'Cancelar'
-            };
+            alertConfig = createFiiProfitTaxAlert({
+                assetName: asset.name || TICKER_DATA[cleanTicker]?.name || asset.ticker,
+                soldQuantity: asset.quantity,
+                profit: lucro,
+                confirmButtonText: 'Sim, remover da carteira',
+                cancelButtonText: 'Cancelar',
+                showCloseButton: true,
+                allowOutsideClick: false
+            });
         } else if (isFII && temPrejuizo) {
             alertConfig = {
                 title: 'Venda com Prejuízo (Sem Imposto)',
@@ -263,6 +297,19 @@ export default function Dashboard() {
                     recommendedCount={10}
                 />
 
+                {activeTab === 'portfolio' && !isAuthenticated && (
+                    <div className="guest-portfolio-banner alert alert-info d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="status">
+                        <span>
+                            <i className="bi bi-info-circle-fill me-2" aria-hidden="true"></i>
+                            <strong>Carteira Provisória Local:</strong> seus dados ficam salvos apenas neste navegador.
+                        </span>
+                        <button type="button" className="btn btn-success fw-bold flex-shrink-0" onClick={signInWithGoogle}>
+                            <i className="bi bi-google me-2" aria-hidden="true"></i>
+                            Salvar Carteira com Google
+                        </button>
+                    </div>
+                )}
+
                 {activeTab === 'portfolio' && !loading && (
                     <PortfolioSummary assets={assets} />
                 )}
@@ -277,8 +324,13 @@ export default function Dashboard() {
                             error={recommendedError}
                             refresh={refreshRecommendations}
                             toolbar={portfolioControls}
+                            existingTickers={assets.map(asset => asset.ticker)}
+                            onGoToPortfolio={ticker => {
+                                setPendingAssetScroll(ticker);
+                                setActiveTab('portfolio');
+                            }}
                         />
-                        <PromptView mode="recommended" assets={recommendedAssets} isGuest={false} />
+                        <PromptView mode="recommended" assets={recommendedAssets} />
                     </>
                 )}
 
@@ -340,7 +392,7 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {!loading && <PromptView mode="portfolio" assets={assets} isGuest={false} />}
+                {!loading && <PromptView mode="portfolio" assets={assets} />}
                     </>
                 )}
             </div>
@@ -349,6 +401,7 @@ export default function Dashboard() {
                 asset={editingAsset} 
                 onClose={() => setEditingAsset(null)} 
                 onSave={handleSaveEdit} 
+                onDelete={deleteAsset}
             />
             
             <AddAssetDrawer
