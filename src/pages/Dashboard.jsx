@@ -234,7 +234,8 @@ export default function Dashboard() {
 
         if (isFII && temLucro) {
             alertConfig = createFiiProfitTaxAlert({
-                soldQuantity: quantity,
+                assetName: asset.name || TICKER_DATA[cleanTicker]?.name || asset.ticker,
+                soldQuantity: asset.quantity,
                 profit: lucro,
                 confirmButtonText: 'Sim, remover da carteira',
                 cancelButtonText: 'Cancelar',
@@ -310,7 +311,7 @@ export default function Dashboard() {
                 )}
 
                 {activeTab === 'portfolio' && !loading && (
-                    <PortfolioSummary assets={assets} isAuthenticated={isAuthenticated} />
+                    <PortfolioSummary assets={assets} />
                 )}
 
                 {activeTab === 'recommended' && (
@@ -329,7 +330,7 @@ export default function Dashboard() {
                                 setActiveTab('portfolio');
                             }}
                         />
-                        <PromptView mode="recommended" assets={recommendedAssets} isGuest={false} />
+                        <PromptView mode="recommended" assets={recommendedAssets} />
                     </>
                 )}
 
@@ -391,7 +392,7 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {!loading && <PromptView mode="portfolio" assets={assets} isGuest={false} />}
+                {!loading && <PromptView mode="portfolio" assets={assets} />}
                     </>
                 )}
             </div>
@@ -400,6 +401,7 @@ export default function Dashboard() {
                 asset={editingAsset} 
                 onClose={() => setEditingAsset(null)} 
                 onSave={handleSaveEdit} 
+                onDelete={deleteAsset}
             />
             
             <AddAssetDrawer

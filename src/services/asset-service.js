@@ -13,6 +13,15 @@ function isRecommendedCacheFresh(timestamp, now = new Date()) {
         || now.getTime() - cachedAt.getTime() <= RECOMMENDED_CACHE_MAX_AGE_MS;
 }
 
+function getPaidMonths(value) {
+    if (Array.isArray(value)) return value;
+    return Array.isArray(value?.months) ? value.months : [];
+}
+
+function getPaidDividends(value) {
+    return Array.isArray(value?.dividends) ? value.dividends : [];
+}
+
 export const AssetService = {
     // --- BLINDAGEM JWT ---
     async _getAuthHeaders() {
@@ -30,16 +39,17 @@ export const AssetService = {
     // Busca ativos no banco de dados e carrega o cache instantâneo (incluindo os meses pagos)
     async getAssets() {
         const { data, error } = await supabase.from('assets').select('*');
-        if (error) return [];
+        if (error) throw error;
         
         return data.map(item => {
             const asset = new Asset(item.ticker, item.quantity, item.average_price, item.vpa);
             asset.id = item.id;
             
             // CACHE INSTANTÂNEO: Aplica preço, variação, DY, P/VP e os meses pagos salvos
-            const cachedPaidMonths = Array.isArray(item.cached_paid_months)
-                ? item.cached_paid_months
-                : item.cached_paid_months || [];
+            const cachedPaidMonths = {
+                months: getPaidMonths(item.cached_paid_months),
+                dividends: getPaidDividends(item.cached_paid_months)
+            };
             asset.applyCache(
                 item.cached_price,
                 item.cached_change,
@@ -78,18 +88,13 @@ export const AssetService = {
 
         return latestBatch.map(row => {
             const cachedPaidMonths = row.paid_months ?? row.paidMonths ?? [];
-            const paidMonths = Array.isArray(cachedPaidMonths)
-                ? cachedPaidMonths
-                : cachedPaidMonths.months || [];
             const marketData = {
                 price: row.price ?? row.current_price ?? null,
                 yieldpct: row.yield_pct ?? row.yieldPct ?? 0,
                 priceToBook: row.price_to_book ?? row.priceToBook ?? null,
                 changePercent: row.change_percent ?? row.changePercent ?? null,
-                paidMonths: Array.isArray(paidMonths) ? paidMonths : [],
-                paidDividends: Array.isArray(cachedPaidMonths?.dividends)
-                    ? cachedPaidMonths.dividends
-                    : []
+                paidMonths: getPaidMonths(cachedPaidMonths),
+                paidDividends: getPaidDividends(cachedPaidMonths)
             };
 
             return {
@@ -182,8 +187,10 @@ export const AssetService = {
                     cached_yield: asset.yieldPct,
                     cached_pvp: asset.pvp,
                     cached_paid_months: {
-                        months: asset.paidMonths,
-                        dividends: asset.paidDividends
+                        months: getPaidMonths(asset.paidMonths),
+                        dividends: Array.isArray(asset.paidDividends)
+                            ? asset.paidDividends
+                            : getPaidDividends(asset.paidDividends)
                     }
                 }).eq('id', asset.id)
             );
@@ -292,6 +299,37 @@ export const AssetService = {
                 average_price: asset.averagePrice,
                 vpa: asset.vpa || null
             }]);
+        if (error) throw error;
+    },
+
+    async addAssets(assets) {
+        if (!Array.isArray(assets) || assets.length === 0) return;
+
+        const seenTickers = new Set();
+        const rows = assets.map(asset => {
+            const ticker = String(asset.ticker || '').trim().toUpperCase();
+            const cleanTicker = ticker.replace(/\.SA$/i, '');
+            const quantity = Number(asset.quantity);
+            const averagePrice = Number(asset.averagePrice);
+
+            if (!ticker || seenTickers.has(cleanTicker)) {
+                throw new Error(`Ticker inválido ou duplicado na carteira provisória: ${ticker || 'vazio'}.`);
+            }
+            if (!Number.isFinite(quantity) || quantity <= 0
+                || !Number.isFinite(averagePrice) || averagePrice <= 0) {
+                throw new Error(`Quantidade ou preço médio inválido para ${ticker}.`);
+            }
+
+            seenTickers.add(cleanTicker);
+            return {
+                ticker,
+                quantity,
+                average_price: averagePrice,
+                vpa: Number(asset.vpa) || null
+            };
+        });
+
+        const { error } = await supabase.from('assets').insert(rows);
         if (error) throw error;
     },
 

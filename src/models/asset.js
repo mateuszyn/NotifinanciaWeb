@@ -30,6 +30,21 @@ export class Asset {
     // Aplica o cache instantâneo enquanto a API não responde
     applyCache(cachedPrice, cachedChange, cachedYield, cachedPvp = null, cachedPaidMonths = []) {
         const price = Number(cachedPrice) || 0;
+        const cachedMonths = Array.isArray(cachedPaidMonths)
+            ? cachedPaidMonths
+            : Array.isArray(cachedPaidMonths?.months)
+                ? cachedPaidMonths.months
+                : [];
+        const cachedDividends = Array.isArray(cachedPaidMonths?.dividends)
+            ? cachedPaidMonths.dividends
+            : [];
+
+        if (cachedMonths.length > 0 || this.paidMonths.length === 0) {
+            this.paidMonths = cachedMonths;
+        }
+        if (cachedDividends.length > 0 || this.paidDividends.length === 0) {
+            this.paidDividends = cachedDividends;
+        }
 
         if (cachedPvp !== null && cachedPvp !== undefined && cachedPvp !== '') {
             const pvp = Number(cachedPvp);
@@ -40,12 +55,6 @@ export class Asset {
             this.currentPrice = price;
             this.dailyChange = Number(cachedChange) || 0;
             this.yieldPct = Number(cachedYield) || 0;
-            this.paidMonths = Array.isArray(cachedPaidMonths)
-                ? cachedPaidMonths
-                : cachedPaidMonths?.months || [];
-            this.paidDividends = Array.isArray(cachedPaidMonths?.dividends)
-                ? cachedPaidMonths.dividends
-                : [];
             
             this.divAnual = this.currentPrice * (this.yieldPct / 100) * this.quantity;
             this.divMensal = this.divAnual / 12;
@@ -73,7 +82,10 @@ export class Asset {
 
         const monthsRaw = marketData.paidMonths || marketData.paid_months;
         if (Array.isArray(monthsRaw)) {
-            this.paidMonths = monthsRaw;
+            const months = [...this.paidMonths, ...monthsRaw]
+                .map(Number)
+                .filter(month => Number.isInteger(month) && month >= 1 && month <= 12);
+            this.paidMonths = [...new Set(months)].sort((first, second) => first - second);
         }
         const dividendsRaw = marketData.paidDividends || marketData.paid_dividends;
         if (Array.isArray(dividendsRaw)) {

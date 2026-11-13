@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
 import { BROKERS } from '../utils/brokers.js';
 import { TICKER_DATA } from '../utils/ticker-data.js'; // Importando o dicionário enriquecido com segmentos[cite: 3]
 import { getSegmentDetails } from '../utils/segment-icon.js';
@@ -13,8 +12,6 @@ export default function AssetCard({
     mode = 'portfolio',
     onAddRecommended
 }) {
-    const { isAuthenticated, signInWithGoogle } = useAuth();
-
     const profitPct = asset.variacaoPm || 0;
     const dailyChange = asset.dailyChange || 0;
     const profitTextClass = profitPct >= 0 ? 'text-profit-pos' : 'text-profit-neg';
@@ -354,20 +351,9 @@ export default function AssetCard({
                         <div className="col-4 border-end border-secondary px-1">
                             <p className="price-label mb-0">P. Médio</p>
                             <p className="price-value mb-0">R$ {(asset.averagePrice || 0).toFixed(2)}</p>
-                            {isAuthenticated ? (
-                                <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
-                                    ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
-                                </span>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-success btn-sm py-0 px-2"
-                                    style={{ fontSize: '0.68rem' }}
-                                    onClick={signInWithGoogle}
-                                >
-                                    <i className="bi bi-google me-1" aria-hidden="true"></i>Entrar
-                                </button>
-                            )}
+                            <span className={`${profitTextClass} small`} style={{ fontSize: '0.72rem' }}>
+                                ({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
+                            </span>
                         </div>
                     )}
                     <div className={`${mode === 'radar' ? 'col-6' : 'col-4'} border-end border-secondary px-1`}>
@@ -502,55 +488,45 @@ export default function AssetCard({
                                 </div>
                             )}
 
-                            {isAuthenticated ? (
-                                <div className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container">
-                                    {rollingMonths.map(item => {
-                                        const hasPaid = (hasDividendEventHistory && paidDividends.some(payment => (
-                                            Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
-                                        ))) || paidMonths.includes(item.monthIndex);
-                                        const boxBg = hasPaid ? '#28a745' : '#212529';
-                                        const textColor = hasPaid ? '#ffffff' : '#555e68';
-                                        const monthKey = `${item.monthIndex}-${item.year}`;
+                            <div className="d-flex align-items-center gap-1 mt-2 p-1 bg-black rounded border border-secondary months-grid-container">
+                                {rollingMonths.map(item => {
+                                    const hasPaid = (hasDividendEventHistory && paidDividends.some(payment => (
+                                        Number(payment.year) === item.year && Number(payment.month) === item.monthIndex
+                                    ))) || paidMonths.includes(item.monthIndex);
+                                    const boxBg = hasPaid ? '#28a745' : '#212529';
+                                    const textColor = hasPaid ? '#ffffff' : '#555e68';
+                                    const monthKey = `${item.monthIndex}-${item.year}`;
 
-                                        return (
-                                            <button
-                                                key={monthKey}
-                                                type="button"
-                                                className="month-box"
-                                                onClick={() => handleMonthClick(item)}
-                                                aria-label={`${item.full} ${item.year}${hasPaid ? ', com proventos' : ', sem proventos registrados'}`}
-                                                style={{
-                                                    height: '22px',
-                                                    flex: '0 0 calc((100% - 20px) / 6)',
-                                                    minWidth: 0,
-                                                    backgroundColor: boxBg,
-                                                    color: textColor,
-                                                    fontSize: '0.68rem',
-                                                    fontWeight: 'bold',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    position: 'relative',
-                                                    border: hasPaid ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.04)',
-                                                    transition: 'all 0.15s ease'
-                                                }}
-                                            >
-                                                {item.short}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="guest-paid-months-invite mt-2 p-2 rounded border border-secondary bg-black">
-                                    <p className="small text-secondary mb-2">Entre com Google para ver o histórico de proventos mês a mês.</p>
-                                    <button type="button" className="btn btn-outline-info btn-sm" onClick={signInWithGoogle}>
-                                        <i className="bi bi-google me-1" aria-hidden="true"></i>
-                                        Ver Meses Pagos
-                                    </button>
-                                </div>
-                            )}
+                                    return (
+                                        <button
+                                            key={monthKey}
+                                            type="button"
+                                            className="month-box"
+                                            onClick={() => handleMonthClick(item)}
+                                            aria-label={`${item.full} ${item.year}${hasPaid ? ', com proventos' : ', sem proventos registrados'}`}
+                                            style={{
+                                                height: '22px',
+                                                flex: '0 0 calc((100% - 20px) / 6)',
+                                                minWidth: 0,
+                                                backgroundColor: boxBg,
+                                                color: textColor,
+                                                fontSize: '0.68rem',
+                                                fontWeight: 'bold',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                position: 'relative',
+                                                border: hasPaid ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.04)',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            {item.short}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </details>
                 </div>

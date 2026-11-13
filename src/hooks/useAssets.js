@@ -31,8 +31,21 @@ function readGuestAssets() {
     }
 }
 
+function getPaidMonths(value) {
+    if (Array.isArray(value)) return value;
+    return Array.isArray(value?.months) ? value.months : [];
+}
+
 function saveGuestAssets(assets) {
     window.localStorage.setItem(GUEST_ASSETS_KEY, JSON.stringify(assets));
+}
+
+function clearGuestAssets() {
+    try {
+        window.localStorage.removeItem(GUEST_ASSETS_KEY);
+    } catch (error) {
+        console.error('Não foi possível limpar a carteira provisória local.', error);
+    }
 }
 
 // Ordenação: a mesma lógica que existia no AssetController
@@ -128,9 +141,11 @@ export function useAssets() {
                                             : Number(asset.dailyChange) || 0,
                                         yieldPct,
                                         pvp: marketData.priceToBook ?? marketData.price_to_book ?? asset.pvp ?? null,
-                                        paidMonths: Array.isArray(marketData.paidMonths)
-                                            ? marketData.paidMonths
-                                            : asset.paidMonths || [],
+                                        paidMonths: [...new Set([
+                                            ...getPaidMonths(asset.paidMonths),
+                                            ...getPaidMonths(marketData.paidMonths ?? marketData.paid_months)
+                                        ].map(Number).filter(month => Number.isInteger(month) && month >= 1 && month <= 12))]
+                                            .sort((first, second) => first - second),
                                         paidDividends: Array.isArray(marketData.paidDividends)
                                             ? marketData.paidDividends
                                             : asset.paidDividends || [],
@@ -167,8 +182,18 @@ export function useAssets() {
                         setNotificationsEnabled(prof.notifications_enabled || false);
                     }
 
-                    // REAL MODE: Fetch do banco
-                    const userAssets = await AssetService.getAssets();
+                    // Carrega a carteira da conta antes de decidir se há algo a migrar.
+                    let userAssets = await AssetService.getAssets();
+                    if (userAssets.length > 0) {
+                        clearGuestAssets();
+                    } else {
+                        const guestAssets = readGuestAssets();
+                        if (guestAssets.length > 0) {
+                            await AssetService.addAssets(guestAssets);
+                            userAssets = await AssetService.getAssets();
+                            clearGuestAssets();
+                        }
+                    }
                     setRawAssets(userAssets || []);
 
                     // SWR: Revalida preços no background

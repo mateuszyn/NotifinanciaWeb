@@ -1,16 +1,13 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
 import { AssetService } from '../services/asset-service.js';
 
-export default function PortfolioSummary({ assets, isAuthenticated: isAuthenticatedProp }) {
-    const auth = useAuth();
+export default function PortfolioSummary({ assets }) {
     const [hoveredTicker, setHoveredTicker] = React.useState(null);
     const longPressTimerRef = React.useRef(null);
     const isLongPressRef = React.useRef(false);
 
     if (!assets || assets.length === 0) return null;
 
-    const isAuthenticated = isAuthenticatedProp ?? auth.isAuthenticated;
     const summary = AssetService.calculatePortfolioSummary(assets);
     
     const formatCurrency = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -170,16 +167,8 @@ export default function PortfolioSummary({ assets, isAuthenticated: isAuthentica
                 </div>
                 <div className="summary-metric">
                     <span>Variação global</span>
-                    {isAuthenticated ? (
-                        <>
-                            <strong className={textProfitClass}>{formatCurrency(summary.profit)}</strong>
-                            <small className={textProfitClass}>{(summary.profitPct || 0) >= 0 ? '+' : ''}{(summary.profitPct || 0).toFixed(2)}%</small>
-                        </>
-                    ) : (
-                        <button type="button" className="btn btn-outline-success btn-sm mt-2" onClick={auth.signInWithGoogle}>
-                            <i className="bi bi-google me-1" aria-hidden="true"></i>Entrar com Google
-                        </button>
-                    )}
+                    <strong className={textProfitClass}>{formatCurrency(summary.profit)}</strong>
+                    <small className={textProfitClass}>{(summary.profitPct || 0) >= 0 ? '+' : ''}{(summary.profitPct || 0).toFixed(2)}%</small>
                 </div>
                 <div className="summary-metric position-relative">
                     <span>DY aprox. anual</span>

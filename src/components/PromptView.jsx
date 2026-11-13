@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AssetService } from '../services/asset-service.js';
 
-export default function PromptView({ assets = [], isGuest, mode = 'portfolio' }) {
+export default function PromptView({ assets = [], mode = 'portfolio' }) {
     const [copyStatus, setCopyStatus] = useState('');
 
     const currency = value => new Intl.NumberFormat('pt-BR', {
@@ -12,6 +12,13 @@ export default function PromptView({ assets = [], isGuest, mode = 'portfolio' })
     const percent = value => `${(Number(value) || 0) >= 0 ? '+' : ''}${(Number(value) || 0).toFixed(2)}%`;
     const recommended = mode === 'recommended';
     const summary = recommended ? null : AssetService.calculatePortfolioSummary(assets);
+    const tickers = assets
+        .map(asset => String(asset.ticker || '').replace(/\.SA$/i, '').trim())
+        .filter(Boolean)
+        .join(' ');
+    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        `analise fundamentalista e dividendos carteira B3: ${tickers}`
+    )}`;
     const assetLines = assets.map(asset => {
         const marketData = asset.marketData ?? {};
         const quantity = Number(asset.quantity) || 0;
@@ -64,38 +71,49 @@ export default function PromptView({ assets = [], isGuest, mode = 'portfolio' })
 
     return (
         <section id={recommended ? 'recommended-prompt' : 'portfolio-prompt'} className="prompt-view d-flex flex-column align-items-center mt-5 mb-5" aria-label={recommended ? 'Análise das recomendações da B3 com inteligência artificial' : 'Análise da carteira com inteligência artificial'}>
-            <div className="text-start bg-dark border border-secondary rounded p-3 w-100" style={{ maxWidth: '600px' }}>
-                <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
-                    <label htmlFor="portfolio-ai-prompt" className="text-secondary small fw-bold mb-0">
-                        Copie o prompt e cole no Gemini:
-                    </label>
-                    <button type="button" onClick={handleCopy} className="btn btn-sm btn-outline-success border-0 px-2 py-1 flex-shrink-0">
-                        <i className="bi bi-clipboard me-1" aria-hidden="true"></i>
-                        Copiar
-                    </button>
+            <div className="text-start bg-dark border border-secondary rounded-4 p-4 w-100 shadow-sm" style={{ maxWidth: '700px' }}>
+                <div className="d-flex align-items-start gap-3 mb-3">
+                    <span className="text-info fs-3" aria-hidden="true">
+                        <i className="bi bi-stars"></i>
+                    </span>
+                    <div>
+                        <h3 className="text-white fs-5 mb-1">
+                            {recommended ? 'Analise as oportunidades com IA' : 'Analise sua carteira com IA'}
+                        </h3>
+                        <p className="text-secondary small mb-0">
+                            Pesquise os ativos da {recommended ? 'seleção atual' : 'sua carteira'} no Google e abra a análise com Gemini.
+                        </p>
+                    </div>
                 </div>
-                <textarea
-                    id="portfolio-ai-prompt"
-                    readOnly
-                    value={prompt}
-                    aria-label={recommended ? 'Prompt com análise dos ativos recomendados' : 'Prompt com o resumo atual da carteira'}
-                    className="form-control bg-black text-white border-secondary font-monospace"
-                    style={{ height: '180px', fontSize: '0.75rem', resize: 'none' }}
-                />
-                <p className="small text-secondary mb-0 mt-2" role="status" aria-live="polite">
-                    {copyStatus}
-                </p>
-                <div className="d-flex justify-content-center mt-3">
+
+                <div className="d-flex flex-wrap gap-3 small text-secondary bg-black rounded-3 p-3 mb-3">
+                    <span><i className="bi bi-pie-chart me-1" aria-hidden="true"></i>{assets.length} {recommended ? 'oportunidades' : 'ativos'}</span>
+                    {!recommended && (
+                        <>
+                            <span><i className="bi bi-wallet2 me-1" aria-hidden="true"></i>{currency(summary.currentValue)} em patrimônio</span>
+                            <span><i className="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>{percent(summary.profitPct)} de variação</span>
+                        </>
+                    )}
+                </div>
+
+                <div className="d-flex flex-column align-items-center gap-2">
                     <a
-                        href="https://gemini.google.com/"
+                        href={googleSearchUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm"
+                        className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm text-center"
                     >
-                        <i className="bi bi-stars me-2" aria-hidden="true"></i>
-                        Pergunte ao Gemini
+                        <i className="bi bi-google me-2" aria-hidden="true"></i>
+                        {recommended ? 'Analisar Recomendações no Google com Gemini' : 'Analisar Carteira no Google com Gemini'}
                     </a>
+                    <button type="button" onClick={handleCopy} className="btn btn-sm btn-outline-secondary border-0">
+                        <i className="bi bi-clipboard me-1" aria-hidden="true"></i>
+                        Copiar prompt detalhado
+                    </button>
                 </div>
+                <p className="small text-secondary text-center mb-0 mt-2" role="status" aria-live="polite">
+                    {copyStatus}
+                </p>
             </div>
         </section>
     );
